@@ -1,0 +1,281 @@
+{% extends "base.html" %}
+{% block title %}{{ product.name }}{% endblock %}
+
+{% block content %}
+<div class="page-container">
+
+  <!-- Breadcrumb -->
+  <nav class="breadcrumb-nav">
+    <a href="{{ url_for('main.index') }}">🏠 Home</a>
+    <span class="sep">/</span>
+    <a href="{{ url_for('products.list_products') }}">Shop</a>
+    <span class="sep">/</span>
+    <a href="{{ url_for('products.list_products', category=product.category_id) }}">{{ product.category.name }}</a>
+    <span class="sep">/</span>
+    <span style="color:var(--c-text);font-weight:600;">{{ product.name }}</span>
+  </nav>
+
+  <div class="row g-5">
+
+    <!-- Image Gallery -->
+    <div class="col-12 col-md-5">
+      <div id="productImageArea"
+           style="aspect-ratio:1;background:linear-gradient(135deg,var(--c-primary-lt),var(--c-border-lt));
+                  border-radius:var(--radius-xl);overflow:hidden;
+                  display:flex;align-items:center;justify-content:center;
+                  box-shadow:var(--shadow);">
+        {% set first = product.variants.first() %}
+        {% if first and first.image %}
+          <img id="mainImage" src="{{ first.image }}" alt="{{ product.name }}"
+               style="width:100%;height:100%;object-fit:cover;"/>
+        {% else %}
+          <span style="font-size:6rem;opacity:.4;">🍃</span>
+        {% endif %}
+      </div>
+      <!-- Variant thumbnails -->
+      {% set has_thumbs = product.variants|selectattr('image')|list %}
+      {% if has_thumbs %}
+      <div class="d-flex gap-2 mt-3 flex-wrap">
+        {% for v in product.variants %}
+          {% if v.image %}
+            <img src="{{ v.image }}" alt=""
+                 onclick="document.getElementById('mainImage').src=this.src;
+                          document.querySelectorAll('.thumb-img').forEach(t=>t.style.borderColor='var(--c-border)');
+                          this.style.borderColor='var(--c-primary)';"
+                 class="thumb-img"
+                 style="width:60px;height:60px;object-fit:cover;border-radius:var(--radius-lg);
+                        cursor:pointer;border:2px solid var(--c-border);transition:border-color .15s;"/>
+          {% endif %}
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Product Info -->
+    <div class="col-12 col-md-7">
+      <span class="product-category-tag mb-3 d-inline-block">{{ product.category.name }}</span>
+      <h1 style="font-size:2rem;font-weight:800;margin-bottom:.6rem;">{{ product.name }}</h1>
+
+      <!-- Rating -->
+      {% if product.avg_rating() > 0 %}
+        <div class="d-flex align-items-center gap-2 mb-3">
+          <span class="stars">{% for i in range(product.avg_rating()|int) %}★{% endfor %}{% for i in range(5 - product.avg_rating()|int) %}☆{% endfor %}</span>
+          <span style="font-size:.85rem;color:var(--c-muted);font-family:var(--font-mono);">
+            {{ product.avg_rating() }} ({{ reviews|length }} review{{ 's' if reviews|length != 1 }})
+          </span>
+        </div>
+      {% endif %}
+
+      <p style="color:var(--c-muted);line-height:1.8;margin-bottom:1.5rem;font-size:.95rem;">
+        {{ product.description or 'No description available.' }}
+      </p>
+
+      <!-- Promotions -->
+      {% set active_promos = product.promotions.all() %}
+      {% if active_promos %}
+        <div class="mb-3 d-flex flex-wrap gap-2">
+          {% for p in active_promos %}
+            {% if p.is_active() %}
+              <span class="badge badge-organic" style="font-size:.8rem;padding:.35rem .8rem;">
+                🎉 {{ p.name }}: {{ p.discount_percent }}% off
+              </span>
+            {% endif %}
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      <hr class="divider">
+
+      {% if product.variants.count() > 0 %}
+        <form action="{{ url_for('cart.add_to_cart') }}" method="post">
+          <!-- Variant -->
+          <div class="mb-3">
+            <label class="form-label">Choose Variant</label>
+            <select name="variant_id" class="form-select" id="variantSelect"
+                    onchange="updatePrice(this)">
+              {% for v in product.variants %}
+                <option value="{{ v.variant_id }}"
+                        data-price="{{ v.price }}"
+                        data-stock="{{ v.stock }}"
+                        {% if v.stock == 0 %}disabled{% endif %}>
+                  {% if v.size %}{{ v.size }}{% endif %}
+                  {% if v.color %} / {{ v.color }}{% endif %}
+                  — ${{ "%.2f"|format(v.price|float) }}
+                  {% if v.stock == 0 %} (Out of stock){% endif %}
+                  {% if v.stock > 0 and v.stock <= 5 %} ({{ v.stock }} left!){% endif %}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <!-- Price -->
+          <div class="mb-4 d-flex align-items-center gap-3">
+            <span id="displayPrice" style="font-size:2rem;font-weight:800;color:var(--c-primary);font-family:var(--font-mono);">
+              ${{ "%.2f"|format(product.variants.first().price|float) }}
+            </span>
+            <span id="stockInfo" class="badge badge-fresh" style="font-size:.82rem;">
+              {{ product.variants.first().stock }} in stock
+            </span>
+          </div>
+
+          <!-- Quantity -->
+          <div class="mb-4">
+            <label class="form-label">Quantity</label>
+            <div class="qty-stepper">
+              <button type="button" class="btn btn-ghost" onclick="adjustQty(-1)">−</button>
+              <input type="number" name="quantity" id="qtyInput"
+                     value="1" min="1" max="{{ product.variants.first().stock }}">
+              <button type="button" class="btn btn-ghost" onclick="adjustQty(1)">+</button>
+            </div>
+          </div>
+
+          {% if current_user.is_authenticated %}
+            <button type="submit" class="btn btn-orange btn-lg w-100" style="font-size:1rem;">
+              <i class="bi bi-basket-fill me-2"></i> Add to Cart
+            </button>
+          {% else %}
+            <a href="{{ url_for('auth.login') }}" class="btn btn-primary btn-lg w-100" style="font-size:1rem;">
+              <i class="bi bi-person me-2"></i> Log in to purchase
+            </a>
+          {% endif %}
+        </form>
+
+        <!-- Trust badges -->
+        <div class="d-flex flex-wrap gap-3 mt-4" style="font-size:.8rem;color:var(--c-muted);">
+          <span><i class="bi bi-shield-check text-primary me-1"></i>Quality guaranteed</span>
+          <span><i class="bi bi-arrow-counterclockwise text-primary me-1"></i>Easy returns</span>
+          <span><i class="bi bi-truck text-primary me-1"></i>Fast delivery</span>
+        </div>
+
+      {% else %}
+        <div class="alert alert-warning">
+          <i class="bi bi-exclamation-triangle-fill me-2"></i>
+          No variants available for this product.
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <hr class="divider" style="margin:3rem 0;">
+
+  <!-- Reviews Section -->
+  <div class="row g-5">
+    <div class="col-12 col-md-7">
+      <h3 style="font-weight:800;margin-bottom:1.5rem;">
+        Customer Reviews
+        {% if reviews %}
+          <span class="badge badge-fresh ms-2" style="font-size:.75rem;vertical-align:middle;">
+            {{ reviews|length }}
+          </span>
+        {% endif %}
+      </h3>
+
+      {% if reviews %}
+        {% for r in reviews %}
+          <div class="card mb-3" style="border-radius:var(--radius-xl);">
+            <div class="card-body">
+              <div class="d-flex align-items-center justify-content-between mb-2">
+                <div class="d-flex align-items-center gap-2">
+                  <span style="width:36px;height:36px;border-radius:99px;background:var(--c-primary-lt);
+                               display:inline-flex;align-items:center;justify-content:center;
+                               font-weight:800;color:var(--c-primary);font-size:.9rem;">
+                    {{ r.user.name[0].upper() }}
+                  </span>
+                  <strong style="font-size:.92rem;color:var(--c-text);">{{ r.user.name }}</strong>
+                </div>
+                <span style="font-size:.75rem;color:var(--c-muted);font-family:var(--font-mono);">
+                  {{ r.created_at.strftime('%b %d, %Y') }}
+                </span>
+              </div>
+              <div class="stars mb-2">{% for i in range(r.rating) %}★{% endfor %}{% for i in range(5 - r.rating) %}☆{% endfor %}</div>
+              {% if r.comment %}
+                <p class="mb-0" style="font-size:.9rem;color:var(--c-text);">{{ r.comment }}</p>
+              {% endif %}
+            </div>
+          </div>
+        {% endfor %}
+      {% else %}
+        <div class="empty-state" style="padding:2.5rem 1rem;">
+          <div class="icon">✍️</div>
+          <p>No reviews yet. Be the first to share your experience!</p>
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Leave a review -->
+    {% if current_user.is_authenticated %}
+    <div class="col-12 col-md-5">
+      <div class="card" style="border-radius:var(--radius-xl);border:2px solid var(--c-border);">
+        <div class="card-body p-4">
+          <h5 style="font-weight:800;margin-bottom:1.25rem;">
+            <i class="bi bi-star-fill me-2" style="color:var(--c-yellow);"></i>Leave a Review
+          </h5>
+          <form action="{{ url_for('reviews.submit') }}" method="post">
+            <input type="hidden" name="product_id" value="{{ product.product_id }}">
+
+            <div class="mb-3">
+              <label class="form-label">Your Rating</label>
+              <div class="stars-input" id="starRating">
+                {% for i in [5,4,3,2,1] %}
+                  <input type="radio" name="rating" id="star{{ i }}" value="{{ i }}"
+                         {% if loop.last %}checked{% endif %}>
+                  <label for="star{{ i }}">★</label>
+                {% endfor %}
+              </div>
+            </div>
+
+            <div class="mb-4">
+              <label class="form-label" for="comment">Your Comment</label>
+              <textarea class="form-control" id="comment" name="comment" rows="3"
+                        placeholder="Tell us about the freshness, taste, delivery…"></textarea>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100">
+              <i class="bi bi-chat-left-text me-1"></i> Submit Review
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Related Products -->
+  {% if related %}
+  <hr class="divider" style="margin:3rem 0 2rem;">
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <div>
+      <p class="section-title mb-0">More to Explore</p>
+      <h3 style="font-weight:800;margin:0;">You May Also Like</h3>
+    </div>
+  </div>
+  <div class="row row-cols-2 row-cols-sm-4 g-3">
+    {% for product in related %}{% include "products/_card.html" %}{% endfor %}
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function updatePrice(sel) {
+  const opt   = sel.options[sel.selectedIndex];
+  const price = parseFloat(opt.dataset.price).toFixed(2);
+  const stock = parseInt(opt.dataset.stock);
+  document.getElementById('displayPrice').textContent = '$' + price;
+  const si = document.getElementById('stockInfo');
+  si.textContent = stock + ' in stock';
+  si.className = 'badge ' + (stock <= 5 ? 'badge-organic' : 'badge-fresh');
+  const qty = document.getElementById('qtyInput');
+  qty.max = stock;
+  if (parseInt(qty.value) > stock) qty.value = Math.max(1, stock);
+}
+
+function adjustQty(delta) {
+  const inp = document.getElementById('qtyInput');
+  const val = parseInt(inp.value) + delta;
+  if (val >= 1 && val <= parseInt(inp.max)) inp.value = val;
+}
+</script>
+{% endblock %}

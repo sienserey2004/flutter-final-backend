@@ -1,0 +1,78 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Orders — Admin{% endblock %}
+
+{% block admin_content %}
+<div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+  <div>
+    <p class="section-title mb-0">Admin</p>
+    <h2 class="mb-0">Orders</h2>
+  </div>
+  <!-- Status filter -->
+  <div class="d-flex gap-2 flex-wrap">
+    <a href="{{ url_for('admin.orders') }}"
+       class="btn btn-sm {% if not current_status %}btn-primary{% else %}btn-outline{% endif %}">
+      All
+    </a>
+    {% for s in statuses %}
+      <a href="{{ url_for('admin.orders', status=s) }}"
+         class="btn btn-sm {% if current_status==s %}btn-primary{% else %}btn-outline{% endif %}">
+        {{ s }}
+      </a>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="card">
+  {% if orders %}
+  <table class="table-min">
+    <thead>
+      <tr>
+        <th>Order #</th>
+        <th>Customer</th>
+        <th>Date</th>
+        <th>Items</th>
+        <th>Total</th>
+        <th>Status</th>
+        <th>Payment</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for order in orders %}
+      <tr>
+        <td class="text-mono" style="font-weight:500;">#{{ order.order_id }}</td>
+        <td>
+          <div style="font-weight:500;">{{ order.user.name }}</div>
+          <div style="font-size:.75rem; color:var(--c-muted);">{{ order.user.email }}</div>
+        </td>
+        <td style="font-size:.8rem; color:var(--c-muted);">
+          {{ order.created_at.strftime('%b %d, %Y') }}
+        </td>
+        <td class="text-mono">{{ order.items.count() }}</td>
+        <td class="text-mono" style="font-weight:500;">
+          ${{ "%.2f"|format(order.total_amount|float) }}
+        </td>
+        <td><span class="badge status-{{ order.status }}">{{ order.status }}</span></td>
+        <td style="font-size:.8rem;">
+          {% if order.payment %}
+            <span class="badge {% if order.payment.status=='Paid' %}badge-success{% else %}badge-warning{% endif %}">
+              {{ order.payment.status }}
+            </span>
+          {% else %}—{% endif %}
+        </td>
+        <td>
+          <a href="{{ url_for('admin.order_detail', order_id=order.order_id) }}"
+             class="btn btn-outline btn-sm">View</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <div class="empty-state">
+      <div class="icon"><i class="bi bi-receipt"></i></div>
+      <p>No orders found.</p>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

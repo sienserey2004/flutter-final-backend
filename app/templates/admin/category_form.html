@@ -1,0 +1,36 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}{{ 'Edit' if category else 'New' }} Category{% endblock %}
+
+{% block admin_content %}
+<div class="d-flex align-items-center gap-3 mb-4">
+  <a href="{{ url_for('admin.categories') }}" class="btn btn-ghost btn-sm">
+    <i class="bi bi-arrow-left"></i>
+  </a>
+  <div>
+    <p class="section-title mb-0">Categories</p>
+    <h2 class="mb-0">{{ 'Edit' if category else 'New' }} Category</h2>
+  </div>
+</div>
+
+<div class="card" style="max-width:500px;">
+  <div class="card-body p-4">
+    <form method="post">
+      <div class="mb-3">
+        <label class="form-label" for="name">Category Name</label>
+        <input type="text" class="form-control" id="name" name="name"
+               value="{{ category.name if category else '' }}" required autofocus>
+      </div>
+      <div class="mb-4">
+        <label class="form-label" for="description">Description</label>
+        <textarea class="form-control" id="description" name="description" rows="3">{{ category.description if category else '' }}</textarea>
+      </div>
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary">
+          {{ 'Update' if category else 'Create' }} Category
+        </button>
+        <a href="{{ url_for('admin.categories') }}" class="btn btn-outline">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

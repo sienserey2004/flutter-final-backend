@@ -1,0 +1,98 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block admin_content %}
+<p class="section-title">Admin</p>
+<h2 class="mb-4">Dashboard</h2>
+
+<!-- Stats -->
+<div class="row g-3 mb-4">
+  {% set stat_items = [
+    ('Total Users',    stats.users,    'people',        ''),
+    ('Products',       stats.products, 'box-seam',      ''),
+    ('Orders',         stats.orders,   'receipt',       ''),
+    ('Revenue',        stats.revenue,  'currency-dollar','$'),
+  ] %}
+  {% for label, val, icon, prefix in stat_items %}
+  <div class="col-6 col-md-3">
+    <div class="stat-card">
+      <div style="color:var(--c-muted); font-size:1.25rem; margin-bottom:.5rem;">
+        <i class="bi bi-{{ icon }}"></i>
+      </div>
+      <div class="stat-value">{{ prefix }}{{ "%.0f"|format(val|float) if prefix=='$' else val }}</div>
+      <div class="stat-label">{{ label }}</div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Order status row -->
+<div class="row g-3 mb-5">
+  {% for status, count in order_statuses.items() %}
+  <div class="col-6 col-sm-4 col-md-2">
+    <div class="card text-center p-3">
+      <div class="text-mono" style="font-size:1.4rem; font-weight:600;">{{ count }}</div>
+      <div>
+        <span class="badge status-{{ status }}">{{ status }}</span>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Quick links -->
+<div class="row g-3 mb-5">
+  {% set quick = [
+    ('New Product',   'admin.new_product',   'plus-circle'),
+    ('New Category',  'admin.new_category',  'folder-plus'),
+    ('New Coupon',    'admin.new_coupon',     'ticket-perforated'),
+    ('New Promotion', 'admin.new_promotion', 'megaphone'),
+  ] %}
+  {% for label, endpoint, icon in quick %}
+  <div class="col-6 col-md-3">
+    <a href="{{ url_for(endpoint) }}" class="card d-flex align-items-center gap-2 p-3"
+       style="text-decoration:none; flex-direction:row;">
+      <i class="bi bi-{{ icon }}" style="font-size:1.1rem; color:var(--c-muted);"></i>
+      <span style="font-size:.875rem; font-weight:500;">{{ label }}</span>
+    </a>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Recent orders -->
+<div class="d-flex align-items-center justify-content-between mb-2">
+  <h5 class="mb-0">Recent Orders</h5>
+  <a href="{{ url_for('admin.orders') }}" style="font-size:.8rem; color:var(--c-muted);">View all →</a>
+</div>
+<div class="card">
+  <table class="table-min">
+    <thead>
+      <tr>
+        <th>Order #</th>
+        <th>Customer</th>
+        <th>Date</th>
+        <th>Total</th>
+        <th>Status</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for order in recent_orders %}
+      <tr>
+        <td class="text-mono" style="font-weight:500;">#{{ order.order_id }}</td>
+        <td>{{ order.user.name }}</td>
+        <td style="color:var(--c-muted); font-size:.8rem;">
+          {{ order.created_at.strftime('%b %d, %Y') }}
+        </td>
+        <td class="text-mono">${{ "%.2f"|format(order.total_amount|float) }}</td>
+        <td><span class="badge status-{{ order.status }}">{{ order.status }}</span></td>
+        <td>
+          <a href="{{ url_for('admin.order_detail', order_id=order.order_id) }}"
+             class="btn btn-ghost btn-sm">View →</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

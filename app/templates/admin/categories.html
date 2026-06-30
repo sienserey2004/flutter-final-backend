@@ -1,0 +1,55 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Categories — Admin{% endblock %}
+
+{% block admin_content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <div>
+    <p class="section-title mb-0">Admin</p>
+    <h2 class="mb-0">Categories</h2>
+  </div>
+  <a href="{{ url_for('admin.new_category') }}" class="btn btn-primary btn-sm">
+    <i class="bi bi-plus me-1"></i> New Category
+  </a>
+</div>
+
+<div class="card">
+  {% if categories %}
+  <table class="table-min">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Name</th>
+        <th>Description</th>
+        <th>Products</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for cat in categories %}
+      <tr>
+        <td class="text-mono" style="color:var(--c-muted);">{{ cat.category_id }}</td>
+        <td style="font-weight:500;">{{ cat.name }}</td>
+        <td style="color:var(--c-muted); font-size:.85rem;">{{ cat.description or '—' }}</td>
+        <td class="text-mono">{{ cat.products.count() }}</td>
+        <td class="d-flex gap-1">
+          <a href="{{ url_for('admin.edit_category', cat_id=cat.category_id) }}"
+             class="btn btn-outline btn-sm">Edit</a>
+          <form action="{{ url_for('admin.delete_category', cat_id=cat.category_id) }}"
+                method="post" onsubmit="return confirm('Delete this category?')">
+            <button class="btn btn-danger-outline btn-sm" type="submit">
+              <i class="bi bi-trash"></i>
+            </button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <div class="empty-state">
+      <div class="icon"><i class="bi bi-folder"></i></div>
+      <p>No categories yet.</p>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

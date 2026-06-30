@@ -1,0 +1,206 @@
+{% extends "base.html" %} {% block title %}KHQR Payment{% endblock %} {% block
+content %}
+<div class="page-container" style="max-width: 600px; text-align: center">
+  <p class="section-title">Payment</p>
+  <h2 class="mb-4">Scan QR Code to Pay</h2>
+
+  <div class="card">
+    <div class="card-body p-4">
+      <div id="payment-content">
+        <p class="mb-3">Amount: <strong>{{ tx.amount }} KHR</strong></p>
+
+        <div class="mb-3">
+          <img
+            src="data:image/png;base64,{{ qr_b64 }}"
+            alt="KHQR Code"
+            style="max-width: 200px"
+          />
+        </div>
+
+        <p class="mb-3" style="font-size: 0.875rem; color: var(--c-muted)">
+          Scan this QR code with your Bakong app to complete the payment.
+        </p>
+
+        <div class="text-center mb-3">
+          <div
+            id="countdown"
+            class="badge badge-warning"
+            style="font-size: 1.5rem; padding: 0.5rem 1rem"
+          >
+            60
+          </div>
+          <small class="text-muted d-block mt-1"
+            >Time remaining (seconds)</small
+          >
+        </div>
+
+        <div class="d-flex gap-2 justify-content-center mb-3">
+          <a
+            href="{{ deeplink }}"
+            class="btn btn-primary"
+            onclick="stopAutoCheck()"
+          >
+            <i class="bi bi-phone me-1"></i> Open Bakong App
+          </a>
+          <button class="btn btn-outline" onclick="manualCheck()">
+            <i class="bi bi-check-circle me-1"></i> Check Payment
+          </button>
+        </div>
+
+        <div id="status-message" class="mt-3"></div>
+      </div>
+
+      <div id="success-message" style="display: none">
+        <div class="alert alert-success">
+          <i class="bi bi-check-circle-fill me-2"></i>
+          Payment successful! Redirecting...
+        </div>
+      </div>
+
+      <div id="failure-message" style="display: none">
+        <div class="alert alert-danger">
+          <i class="bi bi-x-circle-fill me-2"></i>
+          Payment failed. Please try again or contact support.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mt-3">
+    <a
+      href="{{ url_for('orders.detail', order_id=tx.order_id) }}"
+      class="btn btn-outline"
+      >Back to Order</a
+    >
+  </div>
+</div>
+
+<script>
+  let checkInterval;
+  let timeoutTimer;
+  let countdownInterval;
+  let timeLeft = 60;
+
+  function startPaymentCheck() {
+    console.log("🚀 Starting automatic MD5 payment checking (every 5 seconds)");
+    checkInterval = setInterval(() => {
+      console.log("🔍 Automatic MD5 check triggered");
+      checkPayment();
+    }, 5000); // Check every 5 seconds
+    timeoutTimer = setTimeout(() => {
+      console.log("⏰ Payment session expired (60 seconds)");
+      clearInterval(checkInterval);
+      clearInterval(countdownInterval);
+      showExpired();
+    }, 60000); // 60 seconds
+
+    // Start countdown display
+    countdownInterval = setInterval(updateCountdown, 1000);
+    updateCountdown(); // Initial display
+  }
+
+  function updateCountdown() {
+    const countdownEl = document.getElementById("countdown");
+    countdownEl.textContent = timeLeft;
+
+    if (timeLeft <= 10) {
+      countdownEl.className = "badge badge-danger";
+    } else if (timeLeft <= 30) {
+      countdownEl.className = "badge badge-warning";
+    } else {
+      countdownEl.className = "badge badge-success";
+    }
+
+    if (timeLeft <= 0) {
+      clearInterval(countdownInterval);
+      return;
+    }
+
+    timeLeft--;
+  }
+
+  function checkPayment() {
+    console.log("📡 Making MD5 payment check API call");
+    fetch('{{ url_for("orders.api_check_payment") }}', {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ md5: "{{ tx.md5_hash }}" }),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        console.log("📨 MD5 check response:", data);
+
+        if (data.error) {
+          console.error("❌ MD5 check error:", data.error);
+          document.getElementById("status-message").innerHTML =
+            '<div class="alert alert-danger">' + data.error + "</div>";
+          return;
+        }
+
+        document.getElementById("status-message").innerHTML =
+          '<div class="alert alert-info">' + data.message + "</div>";
+
+        if (data.status === "paid") {
+          console.log("✅ Payment detected as PAID");
+          clearInterval(checkInterval);
+          clearTimeout(timeoutTimer);
+          clearInterval(countdownInterval);
+          showSuccess();
+        } else if (data.status === "failed") {
+          console.log("❌ Payment detected as FAILED");
+          clearInterval(checkInterval);
+          clearTimeout(timeoutTimer);
+          clearInterval(countdownInterval);
+          showFailure();
+        } else {
+          console.log("⏳ Payment still PENDING");
+        }
+      })
+      .catch((error) => {
+        console.error("🚨 Error checking payment:", error);
+      });
+  }
+
+  function stopAutoCheck() {
+    console.log("🛑 Stopping automatic MD5 payment checking");
+    clearInterval(checkInterval);
+    clearTimeout(timeoutTimer);
+    clearInterval(countdownInterval);
+    document.getElementById("status-message").innerHTML =
+      '<div class="alert alert-info">Automatic checking stopped. Use manual check or wait for app callback.</div>';
+  }
+
+  function manualCheck() {
+    console.log("👆 Manual MD5 check requested");
+    // Stop automatic checking first
+    stopAutoCheck();
+    // Then do a one-time check
+    checkPayment();
+  }
+
+  function showSuccess() {
+    document.getElementById("payment-content").style.display = "none";
+    document.getElementById("success-message").style.display = "block";
+    setTimeout(() => {
+      window.location.href =
+        '{{ url_for("orders.detail", order_id=tx.order_id) }}';
+    }, 3000);
+  }
+
+  function showFailure() {
+    document.getElementById("payment-content").style.display = "none";
+    document.getElementById("failure-message").style.display = "block";
+  }
+
+  function showExpired() {
+    console.log('⌛ Payment session expired - showing expiry message');
+    document.getElementById("status-message").innerHTML =
+      '<div class="alert alert-warning">Payment session expired. Please try again.</div>';
+  }
+
+  // Start checking when page loads
+  document.addEventListener("DOMContentLoaded", startPaymentCheck);
+</script>
+{% endblock %}

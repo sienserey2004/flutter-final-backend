@@ -1,0 +1,67 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Promotions — Admin{% endblock %}
+
+{% block admin_content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <div>
+    <p class="section-title mb-0">Admin</p>
+    <h2 class="mb-0">Promotions</h2>
+  </div>
+  <a href="{{ url_for('admin.new_promotion') }}" class="btn btn-primary btn-sm">
+    <i class="bi bi-plus me-1"></i> New Promotion
+  </a>
+</div>
+
+<div class="card">
+  {% if promotions %}
+  <table class="table-min">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Discount</th>
+        <th>Start</th>
+        <th>End</th>
+        <th>Products</th>
+        <th>Status</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in promotions %}
+      <tr>
+        <td style="font-weight:500;">{{ p.name }}</td>
+        <td class="text-mono">{{ p.discount_percent }}%</td>
+        <td style="font-size:.8rem; color:var(--c-muted);">
+          {{ p.start_date.strftime('%b %d, %Y') }}
+        </td>
+        <td style="font-size:.8rem; color:var(--c-muted);">
+          {{ p.end_date.strftime('%b %d, %Y') }}
+        </td>
+        <td class="text-mono">{{ p.products|length }}</td>
+        <td>
+          {% if p.is_active() %}
+            <span class="badge badge-success">Active</span>
+          {% else %}
+            <span class="badge badge-neutral">Inactive</span>
+          {% endif %}
+        </td>
+        <td>
+          <form action="{{ url_for('admin.delete_promotion', promo_id=p.promotion_id) }}"
+                method="post" onsubmit="return confirm('Delete this promotion?')">
+            <button class="btn btn-danger-outline btn-sm" type="submit">
+              <i class="bi bi-trash"></i>
+            </button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <div class="empty-state">
+      <div class="icon"><i class="bi bi-megaphone"></i></div>
+      <p>No promotions yet.</p>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

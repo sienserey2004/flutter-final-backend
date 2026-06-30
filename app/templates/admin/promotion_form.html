@@ -1,0 +1,69 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}New Promotion{% endblock %}
+
+{% block admin_content %}
+<div class="d-flex align-items-center gap-3 mb-4">
+  <a href="{{ url_for('admin.promotions') }}" class="btn btn-ghost btn-sm">
+    <i class="bi bi-arrow-left"></i>
+  </a>
+  <div>
+    <p class="section-title mb-0">Promotions</p>
+    <h2 class="mb-0">New Promotion</h2>
+  </div>
+</div>
+
+<div class="card" style="max-width:600px;">
+  <div class="card-body p-4">
+    <form method="post">
+      <div class="row g-3">
+        <div class="col-12">
+          <label class="form-label" for="name">Promotion Name</label>
+          <input type="text" class="form-control" id="name" name="name"
+                 placeholder="Summer Sale 2025" required autofocus>
+        </div>
+        <div class="col-12 col-sm-4">
+          <label class="form-label" for="discount_percent">Discount (%)</label>
+          <input type="number" step="0.01" min="0" max="100" class="form-control"
+                 id="discount_percent" name="discount_percent" required>
+        </div>
+        <div class="col-12 col-sm-4">
+          <label class="form-label" for="start_date">Start Date</label>
+          <input type="date" class="form-control" id="start_date" name="start_date" required>
+        </div>
+        <div class="col-12 col-sm-4">
+          <label class="form-label" for="end_date">End Date</label>
+          <input type="date" class="form-control" id="end_date" name="end_date" required>
+        </div>
+
+        <div class="col-12">
+          <label class="form-label">Apply to Products</label>
+          <div style="max-height:240px; overflow-y:auto; border:1px solid var(--c-border);
+                      border-radius:var(--radius); padding:.5rem;">
+            {% for p in products %}
+            <label class="d-flex align-items-center gap-2 px-2 py-1 rounded"
+                   style="cursor:pointer; font-size:.875rem;"
+                   onmouseover="this.style.background='var(--c-accent-lt)'"
+                   onmouseout="this.style.background=''">
+              <input type="checkbox" name="product_ids" value="{{ p.product_id }}"
+                     style="accent-color:var(--c-text);">
+              <span>{{ p.name }}</span>
+              <span style="color:var(--c-muted); font-size:.75rem; margin-left:auto;">
+                {{ p.category.name }}
+              </span>
+            </label>
+            {% endfor %}
+          </div>
+          <p style="font-size:.72rem; color:var(--c-muted); margin-top:.3rem;">
+            Select one or more products to include in this promotion.
+          </p>
+        </div>
+
+        <div class="col-12 d-flex gap-2 mt-2">
+          <button type="submit" class="btn btn-primary">Create Promotion</button>
+          <a href="{{ url_for('admin.promotions') }}" class="btn btn-ghost">Cancel</a>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

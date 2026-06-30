@@ -1,0 +1,55 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}{{ 'Edit' if merchant else 'New' }} Bakong Merchant{% endblock %}
+
+{% block admin_content %}
+<div class="d-flex align-items-center gap-3 mb-4">
+  <a href="{{ url_for('admin.bakong_merchants') }}" class="btn btn-ghost btn-sm">
+    <i class="bi bi-arrow-left"></i>
+  </a>
+  <div>
+    <p class="section-title mb-0">Bakong Merchants</p>
+    <h2 class="mb-0">{{ 'Edit' if merchant else 'New' }} Merchant</h2>
+  </div>
+</div>
+
+<div class="card" style="max-width:600px;">
+  <div class="card-body p-4">
+    <form method="post">
+      <div class="mb-3">
+        <label class="form-label" for="merchant_name">Merchant Name</label>
+        <input type="text" class="form-control" id="merchant_name" name="merchant_name"
+               value="{{ merchant.merchant_name if merchant else '' }}" required autofocus>
+      </div>
+      <div class="mb-3">
+        <label class="form-label" for="bank_account">Bank Account</label>
+        <input type="text" class="form-control" id="bank_account" name="bank_account"
+               value="{{ merchant.bank_account if merchant else '' }}" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label" for="merchant_city">Merchant City</label>
+        <input type="text" class="form-control" id="merchant_city" name="merchant_city"
+               value="{{ merchant.merchant_city if merchant else '' }}" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label" for="terminal_label">Terminal Label</label>
+        <input type="text" class="form-control" id="terminal_label" name="terminal_label"
+               value="{{ merchant.terminal_label if merchant else '' }}" required>
+      </div>
+      {% if merchant %}
+      <div class="mb-4">
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" id="is_active" name="is_active" {{ 'checked' if merchant.is_active else '' }}>
+          <label class="form-check-label" for="is_active">Active</label>
+        </div>
+      </div>
+      {% endif %}
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary">
+          {{ 'Update' if merchant else 'Create' }} Merchant
+        </button>
+        <a href="{{ url_for('admin.bakong_merchants') }}" class="btn btn-outline">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

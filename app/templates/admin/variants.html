@@ -1,0 +1,80 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Variants — {{ product.name }}{% endblock %}
+
+{% block admin_content %}
+<div class="d-flex align-items-center gap-3 mb-4">
+  <a href="{{ url_for('admin.products') }}" class="btn btn-ghost btn-sm">
+    <i class="bi bi-arrow-left"></i>
+  </a>
+  <div>
+    <p class="section-title mb-0">{{ product.category.name }} / {{ product.name }}</p>
+    <h2 class="mb-0">Variants</h2>
+  </div>
+  <a href="{{ url_for('admin.new_variant', product_id=product.product_id) }}"
+     class="btn btn-primary btn-sm ms-auto">
+    <i class="bi bi-plus me-1"></i> Add Variant
+  </a>
+</div>
+
+<div class="card">
+  {% if product.variants.count() > 0 %}
+  <table class="table-min">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Size</th>
+        <th>Color</th>
+        <th>Price</th>
+        <th>Stock</th>
+        <th>Image URL</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for v in product.variants %}
+      <tr>
+        <td class="text-mono" style="color:var(--c-muted);">{{ v.variant_id }}</td>
+        <td>{{ v.size or '—' }}</td>
+        <td>
+          {% if v.color %}
+            <span class="d-inline-flex align-items-center gap-2">
+              <span style="width:12px;height:12px;border-radius:50%;background:{{ v.color }};
+                           border:1px solid var(--c-border);"></span>
+              {{ v.color }}
+            </span>
+          {% else %}—{% endif %}
+        </td>
+        <td class="text-mono">${{ "%.2f"|format(v.price|float) }}</td>
+        <td class="text-mono">
+          <span {% if v.stock == 0 %}style="color:var(--c-danger);"
+                {% elif v.stock <= 5 %}style="color:var(--c-warning);"{% endif %}>
+            {{ v.stock }}
+          </span>
+        </td>
+        <td style="font-size:.75rem; color:var(--c-muted); max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+          {{ v.image or '—' }}
+        </td>
+        <td>
+          <div class="d-flex gap-1">
+            <a href="{{ url_for('admin.edit_variant', variant_id=v.variant_id) }}"
+               class="btn btn-outline btn-sm">Edit</a>
+            <form action="{{ url_for('admin.delete_variant', variant_id=v.variant_id) }}"
+                  method="post" onsubmit="return confirm('Delete this variant?')">
+              <button class="btn btn-danger-outline btn-sm" type="submit">
+                <i class="bi bi-trash"></i>
+              </button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <div class="empty-state">
+      <div class="icon"><i class="bi bi-layers"></i></div>
+      <p>No variants yet. Add size/color options.</p>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

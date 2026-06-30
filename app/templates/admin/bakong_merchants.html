@@ -1,0 +1,78 @@
+{% extends "admin/base_admin.html" %} {% block title %}Bakong Merchants —
+Admin{% endblock %} {% block admin_content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <div>
+    <p class="section-title mb-0">Admin</p>
+    <h2 class="mb-0">Bakong Merchants</h2>
+  </div>
+  <a
+    href="{{ url_for('admin.new_bakong_merchant') }}"
+    class="btn btn-primary btn-sm"
+  >
+    <i class="bi bi-plus me-1"></i> New Merchant
+  </a>
+</div>
+
+<div class="card">
+  {% if merchants %}
+  <table class="table-min">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Merchant Name</th>
+        <th>Bank Account</th>
+        <th>City</th>
+        <th>Terminal</th>
+        <th>Status</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for merchant in merchants %}
+      <tr>
+        <td class="text-mono" style="color: var(--c-muted)">
+          {{ merchant.merchant_id }}
+        </td>
+        <td style="font-weight: 500">{{ merchant.merchant_name }}</td>
+        <td class="text-mono">{{ merchant.bank_account }}</td>
+        <td>{{ merchant.merchant_city }}</td>
+        <td>{{ merchant.terminal_label }}</td>
+        <td>
+          {% if merchant.is_active %}
+          <span class="badge badge-success">Active</span>
+          {% else %}
+          <span class="badge badge-neutral">Inactive</span>
+          {% endif %}
+        </td>
+        <td class="d-flex gap-1">
+          <a
+            href="{{ url_for('admin.edit_bakong_merchant', merchant_id=merchant.merchant_id) }}"
+            class="btn btn-outline btn-sm"
+            >Edit</a
+          >
+          <form
+            action="{{ url_for('admin.delete_bakong_merchant', merchant_id=merchant.merchant_id) }}"
+            method="post"
+            onsubmit="return confirm('Delete this merchant?');"
+          >
+            <button class="btn btn-danger-outline btn-sm" type="submit">
+              <i class="bi bi-trash"></i>
+            </button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-state">
+    <div class="icon"><i class="bi bi-shop"></i></div>
+    <h4>No merchants yet</h4>
+    <p>Add your first Bakong merchant account.</p>
+    <a href="{{ url_for('admin.new_bakong_merchant') }}" class="btn btn-primary"
+      >Add Merchant</a
+    >
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

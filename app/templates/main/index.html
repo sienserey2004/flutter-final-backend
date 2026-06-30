@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block title %}Home{% endblock %}
+
+{% block content %}
+
+<!-- Active promotions banner -->
+{% if active_promos %}
+<div class="promo-banner">
+  {% for p in active_promos %}
+    🎉 <strong>{{ p.name }}</strong> — {{ p.discount_percent }}% off until {{ p.end_date.strftime('%b %d') }}
+    {% if not loop.last %} &nbsp;·&nbsp; {% endif %}
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- Hero -->
+<section class="hero">
+  <div class="hero-content">
+    <div class="hero-badges">
+      <span class="hero-badge">🌱 100% Organic</span>
+      <span class="hero-badge">🚚 Same-Day Delivery</span>
+      <span class="hero-badge">🌾 Farm Fresh</span>
+    </div>
+    <h1>Fresh From Farm<br>To Your Door</h1>
+    <p>Premium quality fruits & vegetables, picked at peak freshness and delivered the same day.</p>
+    <a href="{{ url_for('products.list_products') }}" class="btn btn-orange btn-lg">
+      Shop Fresh Now <i class="bi bi-arrow-right ms-1"></i>
+    </a>
+  </div>
+  <div class="hero-wave">
+    <svg viewBox="0 0 1440 80" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" style="width:100%;height:80px;">
+      <path d="M0,40 C240,80 480,0 720,40 C960,80 1200,0 1440,40 L1440,80 L0,80 Z" fill="#fdfbf5"/>
+    </svg>
+  </div>
+</section>
+
+<div class="page-container">
+
+  <!-- Features Strip -->
+  <div class="features-strip d-flex flex-wrap gap-3 justify-content-around">
+    <div class="feature-item">
+      <div class="feature-icon">🌿</div>
+      <h6>100% Organic</h6>
+      <p>Certified fresh produce</p>
+    </div>
+    <div class="feature-item">
+      <div class="feature-icon">🚚</div>
+      <h6>Fast Delivery</h6>
+      <p>Same-day to your door</p>
+    </div>
+    <div class="feature-item">
+      <div class="feature-icon">✅</div>
+      <h6>Quality Checked</h6>
+      <p>Freshness guaranteed</p>
+    </div>
+    <div class="feature-item">
+      <div class="feature-icon">💚</div>
+      <h6>Eco-Friendly</h6>
+      <p>Sustainable packaging</p>
+    </div>
+  </div>
+
+  <!-- Categories -->
+  {% if categories %}
+  <div class="mb-5">
+    <p class="section-title">Browse by Category</p>
+    <h2 class="section-heading mb-3">What are you looking for?</h2>
+    <div class="d-flex flex-wrap gap-2">
+      <a href="{{ url_for('products.list_products') }}" class="category-pill active">
+        🛒 All Products
+      </a>
+      {% for cat in categories %}
+        <a href="{{ url_for('products.list_products', category=cat.category_id) }}"
+           class="category-pill">
+          🍃 {{ cat.name }}
+        </a>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Featured Products -->
+  <div class="mb-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+    <div>
+      <p class="section-title mb-0">Today's Picks</p>
+      <h2 class="section-heading mb-0">Featured Products</h2>
+    </div>
+    <a href="{{ url_for('products.list_products') }}"
+       class="btn btn-outline btn-sm">
+      View all <i class="bi bi-arrow-right ms-1"></i>
+    </a>
+  </div>
+
+  {% if featured %}
+  <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 g-3 mb-5">
+    {% for product in featured %}
+      {% include "products/_card.html" %}
+    {% endfor %}
+  </div>
+  {% else %}
+    <div class="empty-state">
+      <div class="icon">🍎</div>
+      <p>No products yet. <a href="{{ url_for('admin.new_product') }}">Add one →</a></p>
+    </div>
+  {% endif %}
+
+  <!-- CTA Section -->
+  <div class="text-center py-5" style="background:linear-gradient(135deg,var(--c-primary-lt),var(--c-yellow-lt));
+       border-radius:var(--radius-xl);padding:3rem 2rem!important;margin-bottom:1rem;">
+    <div style="font-size:3rem;margin-bottom:1rem;">🥭🍓🍊🍋🍇</div>
+    <h2 style="font-weight:800;color:var(--c-text);margin-bottom:.5rem;">Taste the Difference</h2>
+    <p style="max-width:420px;margin:0 auto 1.5rem;color:var(--c-muted);">
+      Join thousands of happy customers who enjoy farm-fresh produce every week.
+    </p>
+    <a href="{{ url_for('products.list_products') }}" class="btn btn-primary btn-lg">
+      Start Shopping <i class="bi bi-basket me-1"></i>
+    </a>
+  </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,39 @@
+<div class="col">
+  <a href="{{ url_for('products.detail', product_id=product.product_id) }}"
+     class="text-decoration-none">
+    <div class="card product-card h-100">
+      <div class="product-img">
+        {% set first_variant = product.variants.first() %}
+        {% if first_variant and first_variant.image %}
+          <img src="{{ first_variant.image }}" alt="{{ product.name }}" loading="lazy"/>
+        {% else %}
+          <span style="font-size:3.5rem;opacity:.5;">🍃</span>
+        {% endif %}
+      </div>
+      <div class="card-body">
+        <span class="product-category-tag mb-2 d-inline-block">{{ product.category.name }}</span>
+        <h6 style="font-weight:700;margin-bottom:.4rem;color:var(--c-text);font-size:.95rem;line-height:1.3;">
+          {{ product.name }}
+        </h6>
+        <div class="d-flex align-items-center justify-content-between mt-auto">
+          <span class="product-price">${{ "%.2f"|format(product.base_price|float) }}</span>
+          {% if product.avg_rating() > 0 %}
+            <span class="stars" style="font-size:.8rem;">
+              {% for i in range(product.avg_rating()|int) %}★{% endfor %}
+              <span style="color:var(--c-muted);font-size:.72rem;font-family:var(--font-mono);margin-left:2px;">
+                {{ product.avg_rating() }}
+              </span>
+            </span>
+          {% endif %}
+        </div>
+        {% if product.total_stock() == 0 %}
+          <span class="badge badge-danger mt-2">Out of stock</span>
+        {% elif product.total_stock() <= 5 %}
+          <span class="badge badge-organic mt-2">Only {{ product.total_stock() }} left</span>
+        {% else %}
+          <span class="badge badge-fresh mt-2">In Stock</span>
+        {% endif %}
+      </div>
+    </div>
+  </a>
+</div>

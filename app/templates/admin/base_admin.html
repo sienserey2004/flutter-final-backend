@@ -1,0 +1,86 @@
+{% extends "base.html" %} {% block content %}
+<div class="d-flex" style="min-height: calc(100vh - var(--nav-h))">
+  <!-- Admin sidebar -->
+  <aside class="sidebar d-none d-lg-block">
+    <p class="sidebar-section-label">Overview</p>
+    <a
+      href="{{ url_for('admin.dashboard') }}"
+      class="sidebar-link {% if request.endpoint=='admin.dashboard' %}active{% endif %}"
+    >
+      <i class="bi bi-grid-1x2"></i> Dashboard
+    </a>
+
+    <p class="sidebar-section-label mt-3">Catalog</p>
+    <a
+      href="{{ url_for('admin.categories') }}"
+      class="sidebar-link {% if 'categor' in request.endpoint %}active{% endif %}"
+    >
+      <i class="bi bi-folder"></i> Categories
+    </a>
+    <a
+      href="{{ url_for('admin.products') }}"
+      class="sidebar-link {% if 'product' in request.endpoint %}active{% endif %}"
+    >
+      <i class="bi bi-box-seam"></i> Products
+    </a>
+    <a
+      href="{{ url_for('admin.inventory') }}"
+      class="sidebar-link {% if request.endpoint=='admin.inventory' %}active{% endif %}"
+    >
+      <i class="bi bi-list-check"></i> Inventory
+    </a>
+
+    <p class="sidebar-section-label mt-3">Sales</p>
+    <a
+      href="{{ url_for('admin.orders') }}"
+      class="sidebar-link {% if 'order' in request.endpoint %}active{% endif %}"
+    >
+      <i class="bi bi-receipt"></i> Orders
+    </a>
+    <a
+      href="{{ url_for('admin.coupons') }}"
+      class="sidebar-link {% if 'coupon' in request.endpoint %}active{% endif %}"
+    >
+      <i class="bi bi-ticket-perforated"></i> Coupons
+    </a>
+    <a
+      href="{{ url_for('admin.promotions') }}"
+      class="sidebar-link {% if 'promotion' in request.endpoint %}active{% endif %}"
+    >
+      <i class="bi bi-megaphone"></i> Promotions
+    </a>
+
+    <p class="sidebar-section-label mt-3">Payments</p>
+    <a
+      href="{{ url_for('admin.bakong_merchants') }}"
+      class="sidebar-link {% if 'bakong_merchant' in request.endpoint %}active{% endif %}"
+    >
+      <i class="bi bi-shop"></i> Bakong Merchants
+    </a>
+    <a
+      href="{{ url_for('admin.payment_transactions') }}"
+      class="sidebar-link {% if 'payment_transaction' in request.endpoint %}active{% endif %}"
+    >
+      <i class="bi bi-credit-card"></i> Transactions
+    </a>
+
+    <p class="sidebar-section-label mt-3">Users</p>
+    <a
+      href="{{ url_for('admin.users') }}"
+      class="sidebar-link {% if request.endpoint=='admin.users' %}active{% endif %}"
+    >
+      <i class="bi bi-people"></i> Users
+    </a>
+
+    <hr class="divider" style="margin: 1.5rem 0.75rem" />
+    <a href="{{ url_for('main.index') }}" class="sidebar-link">
+      <i class="bi bi-arrow-left"></i> Back to shop
+    </a>
+  </aside>
+
+  <!-- Main content area -->
+  <div style="flex: 1; min-width: 0; padding: 2rem">
+    {% block admin_content %}{% endblock %}
+  </div>
+</div>
+{% endblock %}

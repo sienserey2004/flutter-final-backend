@@ -1,0 +1,51 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Users — Admin{% endblock %}
+
+{% block admin_content %}
+<p class="section-title">Admin</p>
+<h2 class="mb-4">Users <span class="text-mono" style="font-size:1rem; color:var(--c-muted);">{{ users|length }}</span></h2>
+
+<div class="card">
+  <table class="table-min">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Phone</th>
+        <th>Roles</th>
+        <th>Joined</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for user in users %}
+      <tr>
+        <td class="text-mono" style="color:var(--c-muted);">{{ user.user_id }}</td>
+        <td style="font-weight:500;">{{ user.name }}</td>
+        <td style="font-size:.85rem;">{{ user.email }}</td>
+        <td style="font-size:.85rem; color:var(--c-muted);">{{ user.phone or '—' }}</td>
+        <td>
+          {% for role in user.roles %}
+            <span class="badge badge-neutral me-1">{{ role.role_name }}</span>
+          {% endfor %}
+        </td>
+        <td style="font-size:.8rem; color:var(--c-muted);">
+          {{ user.created_at.strftime('%b %d, %Y') }}
+        </td>
+        <td>
+          <form action="{{ url_for('admin.toggle_admin', user_id=user.user_id) }}"
+                method="post" class="d-inline">
+            <button class="btn btn-ghost btn-sm"
+                    style="color:{% if user.has_role('Admin') %}var(--c-danger){% else %}var(--c-muted){% endif %};"
+                    title="{{ 'Remove Admin' if user.has_role('Admin') else 'Make Admin' }}">
+              <i class="bi bi-{% if user.has_role('Admin') %}shield-fill-minus{% else %}shield-plus{% endif %}"></i>
+            </button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

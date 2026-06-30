@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% block title %}Shop{% endblock %}
+
+{% block content %}
+<div class="page-container">
+
+  <!-- Header -->
+  <div class="d-flex align-items-end justify-content-between mb-4 flex-wrap gap-2">
+    <div>
+      <p class="section-title mb-1">
+        <i class="bi bi-basket2 me-1"></i>Fresh Produce
+      </p>
+      <h2 class="mb-0" style="font-weight:800;">
+        {% if search %}Results for "{{ search }}"
+        {% elif current_category %}{{ categories|selectattr('category_id','eq',current_category)|map(attribute='name')|first }}
+        {% else %}All Products{% endif %}
+      </h2>
+    </div>
+    <span style="font-size:.85rem; color:var(--c-muted); font-family:var(--font-mono); font-weight:600;">
+      {{ products.total }} item{{ 's' if products.total != 1 }} found
+    </span>
+  </div>
+
+  <div class="row g-4">
+
+    <!-- Sidebar filters -->
+    <div class="col-12 col-lg-3">
+      <div class="card" style="border-radius:var(--radius-xl);position:sticky;top:calc(var(--nav-h) + 1rem);">
+        <div class="card-body p-3">
+          <p class="section-title mb-3">
+            <i class="bi bi-funnel me-1"></i>Filter & Search
+          </p>
+
+          <form method="get" action="{{ url_for('products.list_products') }}">
+            <!-- Search -->
+            <div class="mb-4">
+              <label class="form-label">Search</label>
+              <div class="d-flex gap-2">
+                <input type="text" name="q" class="form-control" placeholder="Search fruits…"
+                       value="{{ search }}" style="border-radius:var(--radius-lg);">
+                <button class="btn btn-primary btn-sm px-3" type="submit">
+                  <i class="bi bi-search"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- Category -->
+            <div class="mb-4">
+              <label class="form-label">Category</label>
+              <div class="d-flex flex-column gap-1">
+                <a href="{{ url_for('products.list_products', q=search, sort=sort) }}"
+                   class="sidebar-link {% if not current_category %}active{% endif %}">
+                  🛒 All Products
+                </a>
+                {% for cat in categories %}
+                  <a href="{{ url_for('products.list_products', category=cat.category_id, q=search, sort=sort) }}"
+                     class="sidebar-link {% if current_category==cat.category_id %}active{% endif %}">
+                    🍃 {{ cat.name }}
+                    <span class="ms-auto" style="font-size:.78rem;font-family:var(--font-mono);color:var(--c-muted);">
+                      {{ cat.products.count() }}
+                    </span>
+                  </a>
+                {% endfor %}
+              </div>
+            </div>
+
+            <!-- Sort -->
+            <div>
+              <label class="form-label">Sort by</label>
+              <select name="sort" class="form-select" onchange="this.form.submit()">
+                <option value="newest"     {% if sort=='newest'     %}selected{% endif %}>🆕 Newest First</option>
+                <option value="price_asc"  {% if sort=='price_asc'  %}selected{% endif %}>💰 Price: Low to High</option>
+                <option value="price_desc" {% if sort=='price_desc' %}selected{% endif %}>💎 Price: High to Low</option>
+              </select>
+              <input type="hidden" name="category" value="{{ current_category or '' }}">
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Product Grid -->
+    <div class="col-12 col-lg-9">
+      {% if products.items %}
+        <div class="row row-cols-2 row-cols-sm-2 row-cols-md-3 g-3">
+          {% for product in products.items %}
+            {% include "products/_card.html" %}
+          {% endfor %}
+        </div>
+
+        <!-- Pagination -->
+        {% if products.pages > 1 %}
+        <div class="d-flex justify-content-center mt-5">
+          <ul class="pagination">
+            {% if products.has_prev %}
+              <li class="page-item">
+                <a class="page-link" href="{{ url_for('products.list_products',
+                   page=products.prev_num, category=current_category, q=search, sort=sort) }}">
+                  <i class="bi bi-chevron-left"></i>
+                </a>
+              </li>
+            {% endif %}
+            {% for num in products.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+              {% if num %}
+                <li class="page-item {% if num==products.page %}active{% endif %}">
+                  <a class="page-link" href="{{ url_for('products.list_products',
+                     page=num, category=current_category, q=search, sort=sort) }}">{{ num }}</a>
+                </li>
+              {% else %}
+                <li class="page-item disabled"><span class="page-link">…</span></li>
+              {% endif %}
+            {% endfor %}
+            {% if products.has_next %}
+              <li class="page-item">
+                <a class="page-link" href="{{ url_for('products.list_products',
+                   page=products.next_num, category=current_category, q=search, sort=sort) }}">
+                  <i class="bi bi-chevron-right"></i>
+                </a>
+              </li>
+            {% endif %}
+          </ul>
+        </div>
+        {% endif %}
+
+      {% else %}
+        <div class="empty-state">
+          <div class="icon">🔍</div>
+          <h4 style="color:var(--c-text);margin-bottom:.5rem;">No products found</h4>
+          <p>Try adjusting your filters or search for something else.</p>
+          <a href="{{ url_for('products.list_products') }}" class="btn btn-primary mt-2">
+            <i class="bi bi-arrow-left me-1"></i> Browse all products
+          </a>
+        </div>
+      {% endif %}
+    </div>
+
+  </div>
+</div>
+{% endblock %}

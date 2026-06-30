@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Create Account{% endblock %}
+
+{% block content %}
+<div class="auth-wrapper">
+  <div class="auth-box" style="max-width:460px;">
+
+    <div class="text-center mb-4">
+      <div class="auth-logo">🛒</div>
+      <h2 style="font-weight:800;margin-bottom:.25rem;">Create your account</h2>
+      <p style="color:var(--c-muted);margin:0;">Join FreshMart and start shopping fresh today</p>
+    </div>
+
+    <div class="card" style="border-radius:var(--radius-xl);border:2px solid var(--c-border);box-shadow:var(--shadow-lg);">
+      <div class="card-body p-4">
+        <form method="post">
+          <div class="mb-3">
+            <label class="form-label" for="name">Full Name</label>
+            <input type="text" class="form-control" id="name" name="name"
+                   placeholder="Your full name"
+                   value="{{ name or '' }}" required autofocus>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label" for="email">Email Address</label>
+            <input type="email" class="form-control" id="email" name="email"
+                   placeholder="you@example.com"
+                   value="{{ email or '' }}" required>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label" for="phone">
+              Phone
+              <span style="color:var(--c-muted);font-size:.75rem;text-transform:none;letter-spacing:0;font-weight:500;">(optional)</span>
+            </label>
+            <input type="tel" class="form-control" id="phone" name="phone"
+                   placeholder="+855 …"
+                   value="{{ phone or '' }}">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label" for="password">Password</label>
+            <input type="password" class="form-control" id="password" name="password"
+                   placeholder="At least 6 characters"
+                   minlength="6" required>
+          </div>
+
+          <div class="mb-4">
+            <label class="form-label" for="confirm">Confirm Password</label>
+            <input type="password" class="form-control" id="confirm" name="confirm"
+                   placeholder="Repeat your password" required>
+          </div>
+
+          <button type="submit" class="btn btn-primary w-100 btn-lg" style="font-size:1rem;">
+            <i class="bi bi-person-plus me-2"></i>Create Account
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <p class="text-center mt-4" style="font-size:.9rem;color:var(--c-muted);">
+      Already have an account?
+      <a href="{{ url_for('auth.login') }}" style="color:var(--c-primary);font-weight:700;">
+        Log in →
+      </a>
+    </p>
+
+  </div>
+</div>
+{% endblock %}

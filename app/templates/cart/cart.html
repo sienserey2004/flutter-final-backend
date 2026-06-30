@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% block title %}Your Cart{% endblock %}
+
+{% block content %}
+<div class="page-container">
+
+  <div class="mb-4">
+    <p class="section-title mb-1"><i class="bi bi-basket me-1"></i>Shopping</p>
+    <h2 style="font-weight:800;">Your Cart</h2>
+  </div>
+
+  {% if cart and cart.items.count() > 0 %}
+  <div class="row g-4">
+
+    <!-- Cart Items -->
+    <div class="col-12 col-lg-8">
+      <div class="card" style="border-radius:var(--radius-xl);">
+
+        <!-- Mobile-friendly cart items -->
+        <div style="padding:.5rem 0;">
+          {% for item in cart.items %}
+          <div style="display:flex;align-items:center;gap:1rem;padding:1rem 1.25rem;
+                      border-bottom:1px solid var(--c-border-lt);">
+            <!-- Product image -->
+            <div style="width:68px;height:68px;border-radius:var(--radius-lg);overflow:hidden;
+                        flex-shrink:0;background:var(--c-primary-lt);
+                        display:flex;align-items:center;justify-content:center;font-size:1.8rem;">
+              {% if item.variant.image %}
+                <img src="{{ item.variant.image }}" alt=""
+                     style="width:100%;height:100%;object-fit:cover;">
+              {% else %}
+                🍃
+              {% endif %}
+            </div>
+
+            <!-- Info -->
+            <div style="flex:1;min-width:0;">
+              <a href="{{ url_for('products.detail', product_id=item.variant.product_id) }}"
+                 style="font-weight:700;color:var(--c-text);font-size:.95rem;text-decoration:none;">
+                {{ item.variant.product.name }}
+              </a>
+              {% if item.variant.size or item.variant.color %}
+              <div style="font-size:.78rem;color:var(--c-muted);margin-top:.1rem;">
+                {% if item.variant.size %}{{ item.variant.size }}{% endif %}
+                {% if item.variant.color %} · {{ item.variant.color }}{% endif %}
+              </div>
+              {% endif %}
+              <div style="font-family:var(--font-mono);color:var(--c-orange);font-weight:600;margin-top:.25rem;font-size:.9rem;">
+                ${{ "%.2f"|format(item.variant.price|float) }} each
+              </div>
+            </div>
+
+            <!-- Qty control -->
+            <form action="{{ url_for('cart.update_item', item_id=item.cart_item_id) }}"
+                  method="post">
+              <div class="qty-stepper" style="transform:scale(.9);transform-origin:center;">
+                <button type="button" class="btn btn-ghost"
+                        onclick="stepQty(this,-1)">−</button>
+                <input type="number" name="quantity" value="{{ item.quantity }}"
+                       min="1" max="{{ item.variant.stock }}"
+                       onchange="this.form.submit()">
+                <button type="button" class="btn btn-ghost"
+                        onclick="stepQty(this,1)">+</button>
+              </div>
+            </form>
+
+            <!-- Subtotal + Remove -->
+            <div style="text-align:right;flex-shrink:0;min-width:70px;">
+              <div style="font-weight:700;font-family:var(--font-mono);color:var(--c-primary);">
+                ${{ "%.2f"|format(item.subtotal()) }}
+              </div>
+              <form action="{{ url_for('cart.remove_item', item_id=item.cart_item_id) }}"
+                    method="post">
+                <button class="btn btn-ghost btn-sm mt-1" type="submit"
+                        style="color:var(--c-danger);padding:.2rem .4rem;">
+                  <i class="bi bi-trash3"></i>
+                </button>
+              </form>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+
+        <div class="card-footer d-flex justify-content-between align-items-center">
+          <form action="{{ url_for('cart.clear_cart') }}" method="post">
+            <button class="btn btn-ghost btn-sm" type="submit"
+                    style="color:var(--c-danger);">
+              <i class="bi bi-trash3 me-1"></i> Clear cart
+            </button>
+          </form>
+          <a href="{{ url_for('products.list_products') }}"
+             class="btn btn-outline btn-sm">
+            <i class="bi bi-arrow-left me-1"></i> Continue shopping
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Order Summary -->
+    <div class="col-12 col-lg-4">
+      <div class="card" style="border-radius:var(--radius-xl);border:2px solid var(--c-border);">
+        <div class="card-body p-4">
+          <h5 style="font-weight:800;margin-bottom:1.25rem;">
+            <i class="bi bi-receipt me-2" style="color:var(--c-primary);"></i>Order Summary
+          </h5>
+
+          <div class="d-flex justify-content-between mb-2" style="font-size:.9rem;">
+            <span style="color:var(--c-muted);">Items ({{ cart.item_count() }})</span>
+            <span style="font-family:var(--font-mono);font-weight:600;">${{ "%.2f"|format(cart.total()) }}</span>
+          </div>
+          <div class="d-flex justify-content-between mb-2" style="font-size:.9rem;">
+            <span style="color:var(--c-muted);">Delivery</span>
+            <span style="color:var(--c-primary);font-weight:700;font-size:.82rem;">Calculated at checkout</span>
+          </div>
+
+          <hr class="divider">
+
+          <div class="d-flex justify-content-between mb-4">
+            <span style="font-weight:700;font-size:1rem;">Total</span>
+            <span style="font-family:var(--font-mono);font-size:1.4rem;font-weight:800;color:var(--c-primary);">
+              ${{ "%.2f"|format(cart.total()) }}
+            </span>
+          </div>
+
+          <a href="{{ url_for('orders.checkout') }}" class="btn btn-primary btn-lg w-100">
+            <i class="bi bi-lock-fill me-2"></i> Checkout Securely
+          </a>
+
+          <div class="d-flex justify-content-center gap-3 mt-3" style="font-size:.75rem;color:var(--c-muted);">
+            <span><i class="bi bi-shield-check me-1"></i>Secure</span>
+            <span><i class="bi bi-truck me-1"></i>Fast delivery</span>
+            <span><i class="bi bi-arrow-counterclockwise me-1"></i>Easy returns</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  {% else %}
+    <div class="empty-state">
+      <div class="icon">🛒</div>
+      <h4 style="color:var(--c-text);margin-bottom:.5rem;">Your cart is empty</h4>
+      <p>Looks like you haven't added any fresh produce yet!</p>
+      <a href="{{ url_for('products.list_products') }}" class="btn btn-primary btn-lg mt-2">
+        <i class="bi bi-basket2 me-2"></i>Start Shopping
+      </a>
+    </div>
+  {% endif %}
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function stepQty(btn, delta) {
+  const form  = btn.closest('form');
+  const input = form.querySelector('input[name="quantity"]');
+  const val   = parseInt(input.value) + delta;
+  const max   = parseInt(input.max) || 999;
+  if (val >= 1 && val <= max) {
+    input.value = val;
+    form.submit();
+  }
+}
+</script>
+{% endblock %}
