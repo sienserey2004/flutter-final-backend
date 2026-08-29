@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}Request a Return{% endblock %}
+
+{% block content %}
+<div class="page-container" style="max-width:720px;">
+
+  <div class="d-flex align-items-center gap-3 mb-4">
+    <a href="{{ url_for('orders.detail', order_id=order.order_id) }}" class="btn btn-ghost btn-sm">
+      <i class="bi bi-arrow-left"></i>
+    </a>
+    <div>
+      <p class="section-title mb-0">Order #{{ order.order_id }}</p>
+      <h2 style="font-weight:800;margin:0;">Request a return</h2>
+    </div>
+  </div>
+
+  <form method="post">
+    <div class="card mb-3" style="border-radius:var(--radius-xl);">
+      <div class="card-body p-4">
+
+        <h5 style="font-weight:800;margin-bottom:1rem;">Which items?</h5>
+        <div class="d-flex flex-column gap-2 mb-4">
+          {% for item in order.items %}
+            {% set remaining = item.quantity - item.returned_quantity() %}
+            <label class="payment-option d-flex align-items-center gap-3"
+                   style="cursor:{{ 'pointer' if remaining > 0 else 'not-allowed' }};
+                          opacity:{{ 1 if remaining > 0 else 0.5 }};">
+              <input type="checkbox" name="order_item_ids" value="{{ item.order_item_id }}"
+                     {% if remaining <= 0 %}disabled{% endif %}
+                     style="accent-color:var(--c-primary);width:18px;height:18px;">
+              <div style="width:48px;height:48px;border-radius:var(--radius);overflow:hidden;
+                          background:var(--c-primary-lt);flex-shrink:0;">
+                {% if item.variant and item.variant.image_url() %}
+                  <img src="{{ item.variant.image_url() }}" alt=""
+                       style="width:100%;height:100%;object-fit:cover;">
+                {% endif %}
+              </div>
+              <div class="flex-grow-1">
+                <div style="font-weight:700;font-size:.9rem;">{{ item.product_name }}</div>
+                <div style="font-size:.8rem;color:var(--c-muted);">
+                  {{ item.variant_label }} · ${{ "%.2f"|format(item.price|float) }} each
+                  {% if remaining <= 0 %} · already returned{% endif %}
+                </div>
+              </div>
+              {% if remaining > 0 %}
+                <div style="width:90px;">
+                  <label class="form-label" style="font-size:.7rem;margin-bottom:.15rem;"
+                         for="quantity_{{ item.order_item_id }}">Qty</label>
+                  <input type="number" class="form-control" style="padding:.35rem .6rem;"
+                         id="quantity_{{ item.order_item_id }}"
+                         name="quantity_{{ item.order_item_id }}"
+                         value="{{ remaining }}" min="1" max="{{ remaining }}">
+                </div>
+              {% endif %}
+            </label>
+          {% endfor %}
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label" for="reason">Why are you returning it?</label>
+          <select class="form-select" id="reason" name="reason" required>
+            <option value="">Choose a reason…</option>
+            {% for r in reasons %}
+              <option value="{{ r }}">{{ r }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="mb-4">
+          <label class="form-label" for="details">Tell us what happened</label>
+          <textarea class="form-control" id="details" name="details" rows="4"
+                    placeholder="If it was a reaction: what did your skin do, how soon, and were you using anything else new at the time?"></textarea>
+          <div style="font-size:.78rem;color:var(--c-muted);margin-top:.35rem;">
+            Reaction reports go to our catalog team — they're how we catch a problem
+            batch or a formula that isn't working for a skin type.
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-lg">
+          <i class="bi bi-send me-1"></i> Submit return request
+        </button>
+      </div>
+    </div>
+  </form>
+
+  <div class="alert alert-info d-block">
+    <strong><i class="bi bi-info-circle-fill me-1"></i>What happens next</strong>
+    <div style="font-size:.88rem;margin-top:.25rem;">
+      We review within 2 business days. Once approved you'll get return instructions;
+      the refund is issued after we receive the item. Opened skincare isn't resold —
+      it's disposed of.
+    </div>
+  </div>
+
+</div>
+{% endblock %}

@@ -1,89 +1,62 @@
-{% extends "admin/base_admin.html" %} {% block title %}Payment Transactions —
-Admin{% endblock %} {% block admin_content %}
-<div class="d-flex align-items-center justify-content-between mb-4">
-  <div>
-    <p class="section-title mb-0">Admin</p>
-    <h2 class="mb-0">Payment Transactions</h2>
-  </div>
-  <form
-    action="{{ url_for('admin.check_bulk_payments') }}"
-    method="post"
-    class="d-inline"
-  >
-    <button type="submit" class="btn btn-secondary btn-sm">
-      <i class="bi bi-check-circle me-1"></i> Check Bulk Payments
-    </button>
-  </form>
-</div>
+{% extends "admin/base_admin.html" %}
+{% import "admin/_macros.html" as m %}
+{% block title %}Payment Transactions{% endblock %}
 
-<div class="card">
-  {% if transactions %}
-  <table class="table-min">
-    <thead>
-      <tr>
-        <th>ID</th>
-        <th>User</th>
-        <th>Amount</th>
-        <th>Status</th>
-        <th>Created</th>
-        <th>Paid At</th>
-        <th></th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for tx in transactions %}
-      <tr>
-        <td class="text-mono" style="color: var(--c-muted)">
-          {{ tx.transaction_id }}
-        </td>
-        <td>{{ tx.user.name }} ({{ tx.user.email }})</td>
-        <td class="text-mono">{{ tx.amount }} {{ tx.currency }}</td>
-        <td>
-          {% if tx.status == 'Paid' %}
-          <span class="badge badge-success">{{ tx.status }}</span>
-          {% elif tx.status == 'Failed' %}
-          <span class="badge badge-danger">{{ tx.status }}</span>
-          {% elif tx.status == 'Expired' %}
-          <span class="badge badge-warning">{{ tx.status }}</span>
-          {% else %}
-          <span class="badge badge-neutral">{{ tx.status }}</span>
-          {% endif %}
-        </td>
-        <td style="font-size: 0.8rem; color: var(--c-muted)">
-          {{ tx.created_at.strftime('%b %d, %Y %H:%M') }}
-        </td>
-        <td style="font-size: 0.8rem; color: var(--c-muted)">
-          {{ tx.paid_at.strftime('%b %d, %Y %H:%M') if tx.paid_at else '—' }}
-        </td>
-        <td>
-          {% if tx.status == 'Pending' %}
-          <button
-            class="btn btn-outline btn-sm"
-            onclick="checkPayment('{{ tx.md5_hash }}')"
-          >
-            Check
-          </button>
-          {% endif %}
-          <a
-            href="{{ url_for('admin.download_qr', tx_id=tx.transaction_id) }}"
-            class="btn btn-outline btn-sm"
-          >
-            <i class="bi bi-download"></i>
-          </a>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% else %}
-  <div class="empty-state">
-    <div class="icon"><i class="bi bi-receipt"></i></div>
-    <h4>No transactions yet</h4>
-    <p>Payment transactions will appear here.</p>
+{% block admin_content %}
+<div class="card" data-table-wrap>
+  <div class="card-header">
+    <h3 class="card-title">Payment Transactions <span class="text-secondary fs-6">({{ transactions|length }})</span></h3>
+    <div class="card-tools d-flex gap-2">
+      {{ m.table_search('payment-transactions-table', 'Filter transactions…') }}
+      <form action="{{ url_for('admin.check_bulk_payments') }}" method="post" class="d-inline">
+        <button type="submit" class="btn btn-outline-secondary btn-sm">
+          <i class="bi bi-check-circle me-1"></i>Check pending payments
+        </button>
+      </form>
+    </div>
   </div>
-  {% endif %}
+  <div class="card-body p-0">
+    {% if transactions %}
+    <table class="table table-hover mb-0" id="payment-transactions-table">
+      <thead>
+        <tr><th data-sort>ID</th><th data-sort>User</th><th data-sort>Amount</th><th data-sort>Status</th>
+            <th data-sort>Created</th><th data-sort>Paid At</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for tx in transactions %}
+        <tr>
+          <td class="font-monospace text-secondary">{{ tx.transaction_id }}</td>
+          <td>{{ tx.user.name }} <span class="text-secondary small">({{ tx.user.email }})</span></td>
+          <td class="font-monospace">{{ tx.amount }} {{ tx.currency }}</td>
+          <td>{{ m.status_badge(tx.status) }}</td>
+          <td class="small text-secondary">{{ tx.created_at.strftime('%b %d, %Y %H:%M') }}</td>
+          <td class="small text-secondary">{{ tx.paid_at.strftime('%b %d, %Y %H:%M') if tx.paid_at else '—' }}</td>
+          <td>
+            <div class="d-flex gap-1">
+              {% if tx.status == 'Pending' %}
+              <button class="btn btn-outline-secondary btn-sm" onclick="checkPayment('{{ tx.md5_hash }}')">Check</button>
+              {% endif %}
+              <a href="{{ url_for('admin.download_qr', tx_id=tx.transaction_id) }}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-download me-1"></i>Download QR
+              </a>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+      <div class="text-center text-secondary p-5">
+        <i class="bi bi-receipt fs-1 d-block mb-3 opacity-50"></i>
+        <p>No transactions yet. Payment transactions will appear here.</p>
+      </div>
+    {% endif %}
+    <p class="admin-table-empty text-center text-secondary p-4 mb-0" hidden>No rows match your filter.</p>
+  </div>
 </div>
+{% endblock %}
 
+{% block scripts %}
 <script>
   function checkPayment(md5) {
     // Placeholder for individual payment check

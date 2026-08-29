@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}{{ concern.name }}{% endblock %}
+
+{% block content %}
+<div class="page-container">
+
+  <nav class="breadcrumb-nav">
+    <a href="{{ url_for('main.index') }}">Home</a>
+    <span class="sep">/</span>
+    <span>Concerns</span>
+    <span class="sep">/</span>
+    <span style="color:var(--c-text);font-weight:600;">{{ concern.name }}</span>
+  </nav>
+
+  <div class="card mb-4" style="border-radius:var(--radius-xl);">
+    <div class="card-body p-4">
+      <div class="d-flex align-items-center gap-3 mb-2">
+        <span style="font-size:2.2rem;">{{ concern.icon or '•' }}</span>
+        <div>
+          <p class="section-title mb-1">Shop by concern</p>
+          <h2 style="font-weight:800;margin:0;">{{ concern.name }}</h2>
+        </div>
+      </div>
+      {% if concern.description %}
+        <p style="margin:.5rem 0 0;max-width:680px;">{{ concern.description }}</p>
+      {% endif %}
+      <p style="margin:.75rem 0 0;font-size:.85rem;">
+        Products below are ordered by routine step, so you can read them top to bottom
+        as a routine rather than a list.
+      </p>
+    </div>
+  </div>
+
+  {% if products.items %}
+    <div class="row row-cols-2 row-cols-sm-3 row-cols-lg-4 g-3">
+      {% for product in products.items %}{% include "products/_card.html" %}{% endfor %}
+    </div>
+
+    {% if products.pages > 1 %}
+    <div class="d-flex justify-content-center mt-5">
+      <ul class="pagination">
+        {% for num in products.iter_pages() %}
+          {% if num %}
+            <li class="page-item {% if num==products.page %}active{% endif %}">
+              <a class="page-link" href="{{ url_for('products.by_concern', slug=concern.slug, page=num) }}">{{ num }}</a>
+            </li>
+          {% else %}
+            <li class="page-item disabled"><span class="page-link">…</span></li>
+          {% endif %}
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+  {% else %}
+    <div class="empty-state">
+      <div class="icon">🔍</div>
+      <p>Nothing in the catalog targets this concern yet.</p>
+    </div>
+  {% endif %}
+
+</div>
+{% endblock %}

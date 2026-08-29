@@ -1,78 +1,105 @@
 {% extends "admin/base_admin.html" %}
+{% import "admin/_macros.html" as m %}
 {% block title %}Products — Admin{% endblock %}
 
 {% block admin_content %}
-<div class="d-flex align-items-center justify-content-between mb-4">
-  <div>
-    <p class="section-title mb-0">Admin</p>
-    <h2 class="mb-0">Products</h2>
-  </div>
-  <a href="{{ url_for('admin.new_product') }}" class="btn btn-primary btn-sm">
-    <i class="bi bi-plus me-1"></i> New Product
-  </a>
-</div>
-
-<div class="card">
-  {% if products %}
-  <table class="table-min">
-    <thead>
-      <tr>
-        <th>ID</th>
-        <th>Name</th>
-        <th>Category</th>
-        <th>Base Price</th>
-        <th>Variants</th>
-        <th>Stock</th>
-        <th>Rating</th>
-        <th></th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for p in products %}
-      <tr>
-        <td class="text-mono" style="color:var(--c-muted);">{{ p.product_id }}</td>
-        <td>
-          <a href="{{ url_for('products.detail', product_id=p.product_id) }}"
-             style="font-weight:500;">{{ p.name }}</a>
-        </td>
-        <td style="font-size:.85rem; color:var(--c-muted);">{{ p.category.name }}</td>
-        <td class="text-mono">${{ "%.2f"|format(p.base_price|float) }}</td>
-        <td class="text-mono">{{ p.variants.count() }}</td>
-        <td class="text-mono">
-          {% set stock = p.total_stock() %}
-          <span {% if stock == 0 %}style="color:var(--c-danger);"{% endif %}>{{ stock }}</span>
-        </td>
-        <td>
-          {% if p.avg_rating() > 0 %}
-            <span class="stars" style="font-size:.75rem;">★</span>
-            <span class="text-mono" style="font-size:.75rem;">{{ p.avg_rating() }}</span>
-          {% else %}<span style="color:var(--c-border);">—</span>{% endif %}
-        </td>
-        <td>
-          <div class="d-flex gap-1">
-            <a href="{{ url_for('admin.variants', product_id=p.product_id) }}"
-               class="btn btn-ghost btn-sm" title="Variants">
-              <i class="bi bi-layers"></i>
-            </a>
-            <a href="{{ url_for('admin.edit_product', product_id=p.product_id) }}"
-               class="btn btn-outline btn-sm">Edit</a>
-            <form action="{{ url_for('admin.delete_product', product_id=p.product_id) }}"
-                  method="post" onsubmit="return confirm('Delete this product?')">
-              <button class="btn btn-danger-outline btn-sm" type="submit">
-                <i class="bi bi-trash"></i>
-              </button>
-            </form>
-          </div>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% else %}
-    <div class="empty-state">
-      <div class="icon"><i class="bi bi-box-seam"></i></div>
-      <p>No products yet.</p>
+<div class="card" data-table-wrap>
+  <div class="card-header">
+    <h3 class="card-title">Products <span class="text-secondary fs-6">({{ products|length }})</span></h3>
+    <div class="card-tools d-flex gap-2">
+      {{ m.table_search('products-table', 'Filter products…') }}
+      <a href="{{ url_for('admin.new_product') }}" class="btn btn-primary btn-sm">
+        <i class="bi bi-plus-lg me-1"></i>New Product
+      </a>
     </div>
-  {% endif %}
+  </div>
+
+  <div class="card-body border-bottom">
+    <form method="get" class="d-flex gap-2 flex-wrap align-items-end">
+      <div>
+        <label class="form-label mb-1" for="brand">Brand</label>
+        <select class="form-select form-select-sm" id="brand" name="brand" onchange="this.form.submit()">
+          <option value="">All brands</option>
+          {% for b in brands %}
+            <option value="{{ b.brand_id }}" {% if current_brand == b.brand_id %}selected{% endif %}>{{ b.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="form-label mb-1" for="type">Type</label>
+        <select class="form-select form-select-sm" id="type" name="type" onchange="this.form.submit()">
+          <option value="">All types</option>
+          {% for t in product_types %}
+            <option value="{{ t }}" {% if current_type == t %}selected{% endif %}>{{ t }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% if current_brand or current_type %}
+        <a href="{{ url_for('admin.products') }}" class="btn btn-outline-secondary btn-sm">Clear filters</a>
+      {% endif %}
+    </form>
+  </div>
+
+  <div class="card-body p-0">
+    {% if products %}
+    <table class="table table-hover mb-0 text-nowrap" id="products-table">
+      <thead>
+        <tr>
+          <th data-sort>ID</th><th data-sort>Product</th><th data-sort>Brand</th><th data-sort>Type</th><th>Step</th>
+          <th data-sort>Price</th><th data-sort>Variants</th><th data-sort>Stock</th><th>Tags</th><th>Rating</th>
+          <th data-sort>Status</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in products %}
+        <tr>
+          <td class="font-monospace text-secondary">{{ p.product_id }}</td>
+          <td>
+            <a href="{{ url_for('products.detail', product_id=p.product_id) }}" class="fw-semibold">{{ p.name }}</a>
+            <div class="small text-secondary">{{ p.category.name }}</div>
+          </td>
+          <td>{{ p.brand.name if p.brand else '—' }}</td>
+          <td class="text-secondary">{{ p.product_type or '—' }}</td>
+          <td class="font-monospace">{{ p.routine_step or '—' }}</td>
+          <td class="font-monospace">${{ "%.2f"|format(p.base_price|float) }}</td>
+          <td class="font-monospace">{{ p.variants.count() }}</td>
+          <td class="font-monospace">
+            {% set stock = p.total_stock() %}
+            <span class="{% if stock == 0 %}text-danger fw-bold{% elif stock <= 10 %}text-warning fw-bold{% endif %}">{{ stock }}</span>
+          </td>
+          <td class="small text-secondary">
+            {{ p.concerns.count() }}c / {{ p.skin_types.count() }}s / {{ p.ingredient_links.count() }}i
+          </td>
+          <td>
+            {% if p.avg_rating() > 0 %}
+              <i class="bi bi-star-fill text-warning small"></i> <span class="font-monospace small">{{ p.avg_rating() }}</span>
+            {% else %}<span class="text-secondary">—</span>{% endif %}
+          </td>
+          <td>{{ m.bool_badge(p.is_active, 'Live', 'Draft') }}</td>
+          <td>
+            <div class="d-flex gap-1">
+              <a href="{{ url_for('admin.variants', product_id=p.product_id) }}"
+                 class="btn btn-outline-secondary btn-sm" title="Variants"><i class="bi bi-layers"></i></a>
+              <a href="{{ url_for('admin.product_images', product_id=p.product_id) }}"
+                 class="btn btn-outline-secondary btn-sm" title="Images"><i class="bi bi-images"></i></a>
+              <a href="{{ url_for('admin.product_ingredients', product_id=p.product_id) }}"
+                 class="btn btn-outline-secondary btn-sm" title="Ingredients"><i class="bi bi-droplet"></i></a>
+              <a href="{{ url_for('admin.edit_product', product_id=p.product_id) }}"
+                 class="btn btn-outline-primary btn-sm">Edit</a>
+              {{ m.delete_button(url_for('admin.delete_product', product_id=p.product_id), 'product-' ~ p.product_id, p.name) }}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+      <div class="text-center text-secondary p-5">
+        <i class="bi bi-box-seam fs-1 d-block mb-3 opacity-50"></i>
+        <p class="mb-0">No products match.</p>
+      </div>
+    {% endif %}
+    <p class="admin-table-empty text-center text-secondary p-4 mb-0" hidden>No rows match your filter.</p>
+  </div>
 </div>
 {% endblock %}

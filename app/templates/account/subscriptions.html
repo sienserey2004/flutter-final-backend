@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}Subscriptions{% endblock %}
+
+{% block content %}
+<div class="page-container" style="max-width:900px;">
+
+  <div class="mb-4">
+    <p class="section-title mb-1">Account</p>
+    <h2 style="font-weight:800;margin:0;">Refill subscriptions</h2>
+    <p class="mt-2" style="max-width:620px;">
+      Products you get through on a schedule. 10% off every refill, pause or cancel
+      any time.
+    </p>
+  </div>
+
+  {% include "account/_nav.html" %}
+
+  {% if subscriptions %}
+    <div class="d-flex flex-column gap-3">
+      {% for s in subscriptions %}
+        <div class="card" style="border-radius:var(--radius-xl);
+             {% if s.status == 'Cancelled' %}opacity:.6;{% endif %}">
+          <div class="card-body d-flex align-items-center gap-3 flex-wrap">
+            <div style="width:64px;height:64px;border-radius:var(--radius-lg);overflow:hidden;
+                        background:var(--c-primary-lt);flex-shrink:0;">
+              {% if s.variant.image_url() %}
+                <img src="{{ s.variant.image_url() }}" alt=""
+                     style="width:100%;height:100%;object-fit:cover;">
+              {% endif %}
+            </div>
+
+            <div class="flex-grow-1" style="min-width:200px;">
+              <a href="{{ url_for('products.detail', product_id=s.variant.product_id) }}"
+                 style="font-weight:700;color:var(--c-text);">{{ s.variant.product.name }}</a>
+              <div style="font-size:.82rem;color:var(--c-muted);">
+                {{ s.variant.label() }} × {{ s.quantity }} · {{ s.interval_label() }}
+              </div>
+              <div style="font-size:.82rem;margin-top:.2rem;">
+                <span style="font-family:var(--font-mono);font-weight:700;color:var(--c-primary);">
+                  ${{ "%.2f"|format(s.unit_price()) }}
+                </span>
+                <span class="price-was">${{ "%.2f"|format(s.variant.price|float) }}</span>
+                <span class="badge badge-organic" style="font-size:.65rem;">
+                  −{{ s.discount_percent|int }}%
+                </span>
+              </div>
+            </div>
+
+            <div style="text-align:right;min-width:150px;">
+              <span class="badge status-{{ s.status }}">{{ s.status }}</span>
+              {% if s.status == 'Active' and s.next_delivery_at %}
+                <div style="font-size:.78rem;color:var(--c-muted);margin-top:.35rem;">
+                  Next: {{ s.next_delivery_at.strftime('%b %d, %Y') }}
+                </div>
+              {% endif %}
+            </div>
+
+            <div class="d-flex gap-1">
+              {% if s.status == 'Active' %}
+                <form action="{{ url_for('account.update_subscription', sub_id=s.subscription_id, action='pause') }}"
+                      method="post">
+                  <button class="btn btn-outline btn-sm" type="submit">
+                    <i class="bi bi-pause"></i> Pause
+                  </button>
+                </form>
+              {% elif s.status == 'Paused' %}
+                <form action="{{ url_for('account.update_subscription', sub_id=s.subscription_id, action='resume') }}"
+                      method="post">
+                  <button class="btn btn-primary btn-sm" type="submit">
+                    <i class="bi bi-play"></i> Resume
+                  </button>
+                </form>
+              {% endif %}
+              {% if s.status != 'Cancelled' %}
+                <form action="{{ url_for('account.update_subscription', sub_id=s.subscription_id, action='cancel') }}"
+                      method="post" onsubmit="return confirm('Cancel this subscription?')">
+                  <button class="btn btn-danger-outline btn-sm" type="submit">Cancel</button>
+                </form>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state">
+      <div class="icon">🔁</div>
+      <h4 style="color:var(--c-text);margin-bottom:.5rem;">No subscriptions yet</h4>
+      <p>
+        For the things you always run out of — cleanser, sunscreen — subscribe on the
+        product page and save 10% on every refill.
+      </p>
+      <a href="{{ url_for('products.list_products') }}" class="btn btn-primary mt-2">
+        Browse products
+      </a>
+    </div>
+  {% endif %}
+
+</div>
+{% endblock %}

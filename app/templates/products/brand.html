@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}{{ brand.name }}{% endblock %}
+
+{% block content %}
+<div class="page-container">
+
+  <nav class="breadcrumb-nav">
+    <a href="{{ url_for('main.index') }}">Home</a>
+    <span class="sep">/</span>
+    <a href="{{ url_for('products.list_products') }}">Shop</a>
+    <span class="sep">/</span>
+    <span style="color:var(--c-text);font-weight:600;">{{ brand.name }}</span>
+  </nav>
+
+  <div class="card mb-4" style="border-radius:var(--radius-xl);">
+    <div class="card-body p-4 d-flex align-items-center gap-4 flex-wrap">
+      {% if brand.logo %}
+        <img src="{{ brand.logo }}" alt="{{ brand.name }}"
+             style="height:64px;object-fit:contain;">
+      {% endif %}
+      <div>
+        <p class="section-title mb-1">Brand{% if brand.country %} · {{ brand.country }}{% endif %}</p>
+        <h2 style="font-weight:800;margin-bottom:.4rem;">{{ brand.name }}</h2>
+        {% if brand.description %}
+          <p style="margin:0;max-width:640px;font-size:.92rem;">{{ brand.description }}</p>
+        {% endif %}
+      </div>
+      <span class="ms-auto" style="font-family:var(--font-mono);color:var(--c-muted);font-size:.85rem;">
+        {{ products.total }} product{{ 's' if products.total != 1 }}
+      </span>
+    </div>
+  </div>
+
+  {% if products.items %}
+    <div class="row row-cols-2 row-cols-sm-3 row-cols-lg-4 g-3">
+      {% for product in products.items %}{% include "products/_card.html" %}{% endfor %}
+    </div>
+
+    {% if products.pages > 1 %}
+    <div class="d-flex justify-content-center mt-5">
+      <ul class="pagination">
+        {% for num in products.iter_pages() %}
+          {% if num %}
+            <li class="page-item {% if num==products.page %}active{% endif %}">
+              <a class="page-link" href="{{ url_for('products.by_brand', slug=brand.slug, page=num) }}">{{ num }}</a>
+            </li>
+          {% else %}
+            <li class="page-item disabled"><span class="page-link">…</span></li>
+          {% endif %}
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+  {% else %}
+    <div class="empty-state">
+      <div class="icon">✧</div>
+      <p>No products from this brand yet.</p>
+    </div>
+  {% endif %}
+
+</div>
+{% endblock %}

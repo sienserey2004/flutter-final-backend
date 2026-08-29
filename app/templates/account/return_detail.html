@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}Return #{{ req.return_id }}{% endblock %}
+
+{% block content %}
+<div class="page-container" style="max-width:720px;">
+
+  <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+    <div class="d-flex align-items-center gap-3">
+      <a href="{{ url_for('account.returns') }}" class="btn btn-ghost btn-sm">
+        <i class="bi bi-arrow-left"></i>
+      </a>
+      <div>
+        <p class="section-title mb-0">
+          Return · <a href="{{ url_for('orders.detail', order_id=req.order_id) }}">Order #{{ req.order_id }}</a>
+        </p>
+        <h2 style="font-weight:800;margin:0;">Return #{{ req.return_id }}</h2>
+      </div>
+    </div>
+    <span class="badge status-{{ req.status }}" style="font-size:.9rem;padding:.5rem 1.1rem;">
+      {{ req.status }}
+    </span>
+  </div>
+
+  <div class="card mb-3" style="border-radius:var(--radius-xl);">
+    <div class="card-body p-4">
+      <div class="row g-3 mb-3">
+        <div class="col-6">
+          <span class="k" style="display:block;font-size:.7rem;text-transform:uppercase;
+                                 letter-spacing:.06em;color:var(--c-muted);font-weight:700;">Reason</span>
+          <span style="font-weight:700;">{{ req.reason }}</span>
+        </div>
+        <div class="col-6">
+          <span class="k" style="display:block;font-size:.7rem;text-transform:uppercase;
+                                 letter-spacing:.06em;color:var(--c-muted);font-weight:700;">Requested</span>
+          <span style="font-weight:700;">{{ req.created_at.strftime('%b %d, %Y') }}</span>
+        </div>
+      </div>
+
+      {% if req.details %}
+        <p class="section-title mb-1">What you told us</p>
+        <p style="font-size:.9rem;">{{ req.details }}</p>
+      {% endif %}
+
+      <hr class="divider">
+
+      <p class="section-title mb-2">Items</p>
+      {% for item in req.items %}
+        <div class="d-flex justify-content-between align-items-center py-2"
+             style="border-bottom:1px solid var(--c-border-lt);">
+          <div>
+            <div style="font-weight:700;font-size:.9rem;">{{ item.order_item.product_name }}</div>
+            <div style="font-size:.8rem;color:var(--c-muted);">
+              {{ item.order_item.variant_label }} × {{ item.quantity }}
+            </div>
+          </div>
+          <span style="font-family:var(--font-mono);font-weight:700;">
+            ${{ "%.2f"|format(item.order_item.price|float * item.quantity) }}
+          </span>
+        </div>
+      {% endfor %}
+
+      <div class="d-flex justify-content-between align-items-baseline pt-3">
+        <span style="font-weight:800;">Refund amount</span>
+        <span style="font-family:var(--font-mono);font-size:1.3rem;font-weight:800;color:var(--c-primary);">
+          {% if req.refund_amount is not none %}${{ "%.2f"|format(req.refund_amount|float) }}
+          {% else %}Pending review{% endif %}
+        </span>
+      </div>
+
+      {% if req.resolved_at %}
+        <div class="mt-2" style="font-size:.8rem;color:var(--c-muted);">
+          Resolved {{ req.resolved_at.strftime('%b %d, %Y') }}
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="alert alert-info d-block">
+    {% if req.status == 'Requested' %}
+      We're reviewing this — you'll hear from us within 2 business days.
+    {% elif req.status == 'Approved' %}
+      Approved. Return instructions have been sent to {{ current_user.email }}.
+    {% elif req.status == 'Received' %}
+      We've received the item. Your refund is being processed.
+    {% elif req.status == 'Refunded' %}
+      Refunded. Depending on your bank it can take 5–10 days to appear.
+    {% elif req.status == 'Rejected' %}
+      This request wasn't approved. Reply to our email if you think that's wrong.
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

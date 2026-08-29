@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Wishlist{% endblock %}
+
+{% block content %}
+<div class="page-container">
+
+  <div class="mb-4">
+    <p class="section-title mb-1">Account</p>
+    <h2 style="font-weight:800;margin:0;">Saved for later</h2>
+  </div>
+
+  {% include "account/_nav.html" %}
+
+  {% if wishlist.items.count() %}
+    <div class="row row-cols-2 row-cols-sm-3 row-cols-lg-4 g-3">
+      {% for item in wishlist.items %}
+        {% set product = item.product %}
+        {% include "products/_card.html" %}
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state">
+      <div class="icon">💛</div>
+      <h4 style="color:var(--c-text);margin-bottom:.5rem;">Nothing saved yet</h4>
+      <p>Tap the heart on any product to keep it here — handy for payday.</p>
+      <a href="{{ url_for('products.list_products') }}" class="btn btn-primary mt-2">
+        Browse products
+      </a>
+    </div>
+  {% endif %}
+
+</div>
+{% endblock %}

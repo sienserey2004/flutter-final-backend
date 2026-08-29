@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}{{ ingredient.name }}{% endblock %}
+
+{% block content %}
+<div class="page-container">
+
+  <nav class="breadcrumb-nav">
+    <a href="{{ url_for('main.index') }}">Home</a>
+    <span class="sep">/</span>
+    <a href="{{ url_for('main.ingredient_glossary') }}">Ingredients</a>
+    <span class="sep">/</span>
+    <span style="color:var(--c-text);font-weight:600;">{{ ingredient.name }}</span>
+  </nav>
+
+  <div class="card mb-4" style="border-radius:var(--radius-xl);">
+    <div class="card-body p-4">
+      <p class="section-title mb-1">
+        {{ 'Active ingredient' if ingredient.is_active_ingredient else 'Supporting ingredient' }}
+      </p>
+      <h2 style="font-weight:800;margin-bottom:.25rem;">{{ ingredient.name }}</h2>
+      {% if ingredient.inci_name %}
+        <p style="font-family:var(--font-mono);font-size:.85rem;color:var(--c-muted);margin-bottom:1rem;">
+          INCI: {{ ingredient.inci_name }}
+        </p>
+      {% endif %}
+      {% if ingredient.benefits %}
+        <p style="max-width:720px;">{{ ingredient.benefits }}</p>
+      {% endif %}
+      {% if ingredient.caution_note %}
+        <div class="alert alert-warning d-block" style="max-width:720px;">
+          <strong><i class="bi bi-exclamation-triangle-fill me-1"></i>How to use it safely</strong>
+          <div class="mt-1" style="font-size:.9rem;">{{ ingredient.caution_note }}</div>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="d-flex align-items-end justify-content-between mb-3">
+    <h3 style="font-weight:800;margin:0;">Products with {{ ingredient.name }}</h3>
+    <span style="font-family:var(--font-mono);font-size:.85rem;color:var(--c-muted);">
+      {{ products|length }} product{{ 's' if products|length != 1 }}
+    </span>
+  </div>
+
+  {% if products %}
+    <div class="row row-cols-2 row-cols-sm-3 row-cols-lg-4 g-3">
+      {% for product in products %}{% include "products/_card.html" %}{% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state">
+      <div class="icon">🧪</div>
+      <p>Nothing in the catalog lists this ingredient yet.</p>
+    </div>
+  {% endif %}
+
+</div>
+{% endblock %}

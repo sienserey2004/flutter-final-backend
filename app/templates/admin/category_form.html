@@ -2,35 +2,66 @@
 {% block title %}{{ 'Edit' if category else 'New' }} Category{% endblock %}
 
 {% block admin_content %}
-<div class="d-flex align-items-center gap-3 mb-4">
-  <a href="{{ url_for('admin.categories') }}" class="btn btn-ghost btn-sm">
-    <i class="bi bi-arrow-left"></i>
-  </a>
-  <div>
-    <p class="section-title mb-0">Categories</p>
-    <h2 class="mb-0">{{ 'Edit' if category else 'New' }} Category</h2>
-  </div>
+<div class="d-flex align-items-center gap-2 mb-3">
+  <a href="{{ url_for('admin.categories') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i></a>
+  <h3 class="mb-0">{{ 'Edit' if category else 'New' }} Category</h3>
 </div>
 
-<div class="card" style="max-width:500px;">
-  <div class="card-body p-4">
-    <form method="post">
-      <div class="mb-3">
-        <label class="form-label" for="name">Category Name</label>
-        <input type="text" class="form-control" id="name" name="name"
-               value="{{ category.name if category else '' }}" required autofocus>
+<div class="row">
+  <div class="col-12 col-lg-7 col-xl-6">
+    <div class="card">
+      <div class="card-body">
+        <form method="post">
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label" for="name">Category name</label>
+              <input type="text" class="form-control" id="name" name="name"
+                     value="{{ category.name if category else '' }}" required autofocus>
+            </div>
+            <div class="col-12 col-sm-8">
+              <label class="form-label" for="parent_id">Parent category</label>
+              <select class="form-select" id="parent_id" name="parent_id">
+                <option value="">None (top level)</option>
+                {% for p in parents %}
+                  <option value="{{ p.category_id }}"
+                          {% if category and category.parent_id == p.category_id %}selected{% endif %}>
+                    {{ p.name }}
+                  </option>
+                {% endfor %}
+              </select>
+              <div class="form-text">A parent page lists everything filed under its children too.</div>
+            </div>
+            <div class="col-12 col-sm-4">
+              <label class="form-label" for="sort_order">Sort order</label>
+              <input type="number" class="form-control" id="sort_order" name="sort_order"
+                     value="{{ category.sort_order if category else 0 }}">
+            </div>
+            <div class="col-12">
+              <label class="form-label" for="image">Image URL</label>
+              <input type="text" class="form-control" id="image" name="image"
+                     value="{{ category.image or '' if category else '' }}">
+            </div>
+            <div class="col-12">
+              <label class="form-label" for="description">Description</label>
+              <textarea class="form-control" id="description" name="description"
+                        rows="3">{{ category.description or '' if category else '' }}</textarea>
+            </div>
+            {% if category %}
+              <div class="col-12">
+                <div class="font-monospace text-secondary small">
+                  Slug: {{ category.slug }} · {{ category.products.count() }} product(s)
+                  · {{ category.children.count() }} sub-categor{{ 'y' if category.children.count() == 1 else 'ies' }}
+                </div>
+              </div>
+            {% endif %}
+            <div class="col-12 d-flex gap-2 mt-2">
+              <button type="submit" class="btn btn-primary">{{ 'Update' if category else 'Create' }} Category</button>
+              <a href="{{ url_for('admin.categories') }}" class="btn btn-outline-secondary">Cancel</a>
+            </div>
+          </div>
+        </form>
       </div>
-      <div class="mb-4">
-        <label class="form-label" for="description">Description</label>
-        <textarea class="form-control" id="description" name="description" rows="3">{{ category.description if category else '' }}</textarea>
-      </div>
-      <div class="d-flex gap-2">
-        <button type="submit" class="btn btn-primary">
-          {{ 'Update' if category else 'Create' }} Category
-        </button>
-        <a href="{{ url_for('admin.categories') }}" class="btn btn-outline">Cancel</a>
-      </div>
-    </form>
+    </div>
   </div>
 </div>
 {% endblock %}

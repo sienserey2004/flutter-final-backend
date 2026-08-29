@@ -1,0 +1,200 @@
+{% extends "admin/base_admin.html" %}
+{% import "admin/_macros.html" as m %}
+{% block title %}{{ user.name }} — Customer{% endblock %}
+
+{% block admin_content %}
+{% set is_self = user.user_id == current_user.user_id %}
+
+<div class="d-flex align-items-center gap-3 mb-4 flex-wrap">
+  <a href="{{ url_for('admin.users') }}" class="btn btn-outline-secondary btn-sm"
+     aria-label="Back to customers"><i class="bi bi-arrow-left"></i></a>
+  <h3 class="mb-0">{{ user.name }}</h3>
+  {{ m.bool_badge(user.is_active, 'Active', 'Deactivated') }}
+  {% for r in user.roles %}
+    <span class="badge text-bg-{{ 'primary' if r.role_name == 'Admin' else 'secondary' }}">{{ r.role_name }}</span>
+  {% endfor %}
+
+  <div class="ms-auto d-flex gap-2">
+    <a href="{{ url_for('admin.edit_user', user_id=user.user_id) }}" class="btn btn-primary btn-sm">
+      <i class="bi bi-pencil me-1" aria-hidden="true"></i>Edit
+    </a>
+    <form action="{{ url_for('admin.toggle_admin', user_id=user.user_id) }}" method="post">
+      <button type="submit" {{ 'disabled' if is_self }}
+              class="btn btn-outline-{{ 'danger' if user.has_role('Admin') else 'secondary' }} btn-sm">
+        <i class="bi bi-{{ 'shield-fill-minus' if user.has_role('Admin') else 'shield-plus' }} me-1" aria-hidden="true"></i>
+        {{ 'Remove admin' if user.has_role('Admin') else 'Make admin' }}
+      </button>
+    </form>
+    <form action="{{ url_for('admin.toggle_user_active', user_id=user.user_id) }}" method="post">
+      <button type="submit" {{ 'disabled' if is_self }}
+              class="btn btn-outline-{{ 'warning' if user.is_active else 'success' }} btn-sm">
+        <i class="bi bi-{{ 'person-slash' if user.is_active else 'person-check' }} me-1" aria-hidden="true"></i>
+        {{ 'Deactivate' if user.is_active else 'Reactivate' }}
+      </button>
+    </form>
+    {% if not is_self and stats.order_count == 0 %}
+      {{ m.delete_button(url_for('admin.delete_user', user_id=user.user_id),
+                         'del-user-detail', user.name,
+                         'Their cart, wishlist and reviews go with them.') }}
+    {% endif %}
+  </div>
+</div>
+
+<!-- Lifetime value -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-lg-3">{{ m.info_box('$%.2f'|format(stats.total_spent), 'Lifetime spend', 'cash-stack', 'success') }}</div>
+  <div class="col-6 col-lg-3">{{ m.info_box(stats.order_count, 'Orders placed', 'receipt', 'primary') }}</div>
+  <div class="col-6 col-lg-3">{{ m.info_box('$%.2f'|format(stats.average_order), 'Average order', 'graph-up', 'info') }}</div>
+  <div class="col-6 col-lg-3">{{ m.info_box(reviews|length, 'Reviews written', 'star', 'warning') }}</div>
+</div>
+
+<div class="row g-4">
+  <!-- Left: orders + reviews -->
+  <div class="col-12 col-lg-8">
+
+    <div class="card mb-4">
+      <div class="card-header">
+        <h3 class="card-title">Orders <span class="text-secondary fs-6">({{ orders|length }})</span></h3>
+        {% if status_counts %}
+        <div class="card-tools">
+          {% for st, n in status_counts.items() %}
+            {{ m.status_badge(st) }} <span class="text-secondary small me-2">{{ n }}</span>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+      <div class="card-body p-0">
+        {% if orders %}
+        <div class="table-responsive">
+          <table class="table table-hover mb-0 align-middle">
+            <thead><tr><th>Order</th><th>Date</th><th>Status</th><th>Items</th><th class="text-end">Total</th><th></th></tr></thead>
+            <tbody>
+              {% for o in orders %}
+              <tr>
+                <td class="font-monospace">#{{ o.order_id }}</td>
+                <td class="small text-secondary">{{ o.order_date.strftime('%b %d, %Y') if o.order_date else '—' }}</td>
+                <td>{{ m.status_badge(o.status) }}</td>
+                <td class="font-monospace">{{ o.items|length }}</td>
+                <td class="text-end font-monospace">${{ '%.2f'|format(o.total_amount or 0) }}</td>
+                <td class="text-end">
+                  <a href="{{ url_for('admin.order_detail', order_id=o.order_id) }}"
+                     class="btn btn-outline-secondary btn-sm" aria-label="Open order {{ o.order_id }}">
+                    <i class="bi bi-box-arrow-up-right"></i>
+                  </a>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+          <p class="text-secondary text-center p-4 mb-0">No orders yet.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><h3 class="card-title">Reviews <span class="text-secondary fs-6">({{ reviews|length }})</span></h3></div>
+      <div class="card-body p-0">
+        {% if reviews %}
+        <div class="table-responsive">
+          <table class="table table-hover mb-0 align-middle">
+            <thead><tr><th>Product</th><th>Rating</th><th>Comment</th><th>Date</th></tr></thead>
+            <tbody>
+              {% for r in reviews %}
+              <tr>
+                <td class="small fw-semibold">{{ r.product.name if r.product else '—' }}</td>
+                <td class="text-warning text-nowrap">{{ '★' * r.rating }}<span class="text-secondary">{{ '☆' * (5 - r.rating) }}</span></td>
+                <td class="small text-secondary">{{ (r.comment or '—')|truncate(80) }}</td>
+                <td class="small text-secondary">{{ r.created_at.strftime('%b %d, %Y') if r.created_at else '—' }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+          <p class="text-secondary text-center p-4 mb-0">No reviews written.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: profile, addresses, wishlist -->
+  <div class="col-12 col-lg-4">
+
+    <div class="card mb-4">
+      <div class="card-header"><h3 class="card-title">Profile</h3></div>
+      <div class="card-body">
+        <dl class="row mb-0 small">
+          <dt class="col-5 text-secondary">User ID</dt><dd class="col-7 font-monospace">{{ user.user_id }}</dd>
+          <dt class="col-5 text-secondary">Email</dt><dd class="col-7 text-break">{{ user.email }}</dd>
+          <dt class="col-5 text-secondary">Phone</dt><dd class="col-7">{{ user.phone or '—' }}</dd>
+          <dt class="col-5 text-secondary">Joined</dt>
+          <dd class="col-7">{{ user.created_at.strftime('%b %d, %Y') if user.created_at else '—' }}</dd>
+          <dt class="col-5 text-secondary">Last order</dt>
+          <dd class="col-7">{{ stats.last_order_date[:10] if stats.last_order_date else '—' }}</dd>
+        </dl>
+      </div>
+    </div>
+
+    {% if user.skin_profile %}
+    <div class="card mb-4">
+      <div class="card-header"><h3 class="card-title">Skin Profile</h3></div>
+      <div class="card-body small">
+        <dl class="row mb-0">
+          <dt class="col-5 text-secondary">Skin type</dt>
+          <dd class="col-7">{{ user.skin_profile.skin_type.name if user.skin_profile.skin_type else '—' }}</dd>
+          <dt class="col-5 text-secondary">Concerns</dt>
+          <dd class="col-7">
+            {% for c in user.skin_profile.concerns %}<span class="badge text-bg-light me-1">{{ c.name }}</span>{% else %}—{% endfor %}
+          </dd>
+        </dl>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="card mb-4">
+      <div class="card-header"><h3 class="card-title">Addresses <span class="text-secondary fs-6">({{ addresses|length }})</span></h3></div>
+      <div class="card-body">
+        {% for a in addresses %}
+          <div class="{{ 'border-top pt-3 mt-3' if not loop.first }}">
+            <div class="d-flex justify-content-between align-items-start">
+              <strong class="small">{{ a.label or 'Address' }}</strong>
+              {% if a.is_default %}<span class="badge text-bg-success">Default</span>{% endif %}
+            </div>
+            <p class="small text-secondary mb-0">
+              {{ a.recipient_name }}{% if a.phone %} · {{ a.phone }}{% endif %}<br>
+              {{ a.line1 }}{% if a.line2 %}, {{ a.line2 }}{% endif %}<br>
+              {{ a.city }}{% if a.postal_code %} {{ a.postal_code }}{% endif %}
+            </p>
+          </div>
+        {% else %}
+          <p class="text-secondary small mb-0">No saved addresses.</p>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">Wishlist
+          <span class="text-secondary fs-6">({{ user.wishlist.items|length if user.wishlist else 0 }})</span>
+        </h3>
+      </div>
+      <div class="card-body">
+        {% if user.wishlist and user.wishlist.items %}
+          <ul class="list-unstyled mb-0 small">
+            {% for item in user.wishlist.items %}
+              <li class="mb-1">
+                <a href="{{ url_for('admin.edit_product', product_id=item.product_id) }}"
+                   class="link-body-emphasis">{{ item.product.name if item.product else 'Product #' ~ item.product_id }}</a>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="text-secondary small mb-0">Nothing saved.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

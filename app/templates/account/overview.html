@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+{% block title %}My Account{% endblock %}
+
+{% block content %}
+<div class="page-container">
+
+  <div class="mb-4">
+    <p class="section-title mb-1">Account</p>
+    <h2 style="font-weight:800;margin:0;">Hello, {{ current_user.name.split()[0] }}</h2>
+  </div>
+
+  {% include "account/_nav.html" %}
+
+  <div class="row g-4">
+
+    <!-- Skin profile -->
+    <div class="col-12 col-lg-6">
+      <div class="card h-100" style="border-radius:var(--radius-xl);">
+        <div class="card-body p-4">
+          <div class="d-flex justify-content-between align-items-start mb-3">
+            <h5 style="font-weight:800;margin:0;">
+              <i class="bi bi-droplet me-2" style="color:var(--c-primary);"></i>Skin profile
+            </h5>
+            <a href="{{ url_for('account.skin_profile') }}" class="btn btn-ghost btn-sm">
+              {{ 'Edit' if current_user.skin_profile else 'Set up' }}
+            </a>
+          </div>
+
+          {% if current_user.skin_profile %}
+            {% set p = current_user.skin_profile %}
+            <div class="d-flex flex-wrap gap-2 mb-3">
+              {% if p.skin_type %}
+                <span class="claim-chip">{{ p.skin_type.icon or '' }} {{ p.skin_type.name }}</span>
+              {% endif %}
+              {% if p.age_range %}<span class="claim-chip">{{ p.age_range }}</span>{% endif %}
+              {% if p.skin_tone %}<span class="claim-chip">{{ p.skin_tone }}</span>{% endif %}
+              {% if p.is_sensitive %}
+                <span class="claim-chip" style="background:var(--c-orange-lt);color:var(--c-orange-dk);">
+                  Sensitive
+                </span>
+              {% endif %}
+            </div>
+            {% if p.concerns.count() %}
+              <p class="section-title mb-2">Working on</p>
+              <div class="d-flex flex-wrap gap-1 mb-3">
+                {% for c in p.concerns %}
+                  <span class="filter-chip" style="font-size:.74rem;padding:.2rem .6rem;">{{ c.name }}</span>
+                {% endfor %}
+              </div>
+            {% endif %}
+            {% if p.allergies %}
+              <p style="font-size:.85rem;margin-bottom:0;">
+                <strong style="color:var(--c-danger);">Avoiding:</strong> {{ p.allergies }}
+              </p>
+            {% endif %}
+            <a href="{{ url_for('products.for_you') }}" class="btn btn-primary btn-sm mt-3">
+              <i class="bi bi-stars me-1"></i> See my matches
+            </a>
+          {% else %}
+            <p style="font-size:.9rem;">
+              Tell us your skin type and what you're working on, and we'll filter the
+              catalog down to what actually fits — and hide anything you react to.
+            </p>
+            <a href="{{ url_for('account.skin_profile') }}" class="btn btn-primary btn-sm">
+              <i class="bi bi-droplet me-1"></i> Set up my profile
+            </a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick stats -->
+    <div class="col-12 col-lg-6">
+      <div class="row g-3">
+        <div class="col-6">
+          <a href="{{ url_for('orders.my_orders') }}" class="tile-link">
+            <span class="tile-icon"><i class="bi bi-receipt" style="color:var(--c-primary);"></i></span>
+            <span class="tile-name">{{ current_user.orders.count() }} orders</span>
+          </a>
+        </div>
+        <div class="col-6">
+          <a href="{{ url_for('account.wishlist') }}" class="tile-link">
+            <span class="tile-icon"><i class="bi bi-heart" style="color:var(--c-orange);"></i></span>
+            <span class="tile-name">{{ wishlist.item_count() }} saved</span>
+          </a>
+        </div>
+        <div class="col-6">
+          <a href="{{ url_for('account.subscriptions') }}" class="tile-link">
+            <span class="tile-icon"><i class="bi bi-arrow-repeat" style="color:var(--c-primary);"></i></span>
+            <span class="tile-name">{{ subscriptions|length }} subscriptions</span>
+          </a>
+        </div>
+        <div class="col-6">
+          <a href="{{ url_for('account.addresses') }}" class="tile-link">
+            <span class="tile-icon"><i class="bi bi-geo-alt" style="color:var(--c-primary);"></i></span>
+            <span class="tile-name">{{ current_user.addresses.count() }} addresses</span>
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent orders -->
+    <div class="col-12">
+      <div class="card" style="border-radius:var(--radius-xl);">
+        <div style="padding:.9rem 1.25rem;border-bottom:2px solid var(--c-border-lt);
+                    display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:.75rem;font-weight:700;text-transform:uppercase;
+                       letter-spacing:.08em;color:var(--c-muted);">Recent orders</span>
+          <a href="{{ url_for('orders.my_orders') }}" style="font-size:.82rem;">View all</a>
+        </div>
+        {% if orders %}
+          <table class="table-min">
+            <thead>
+              <tr><th>Order</th><th>Date</th><th>Items</th><th>Total</th><th>Status</th><th></th></tr>
+            </thead>
+            <tbody>
+              {% for o in orders %}
+              <tr>
+                <td class="text-mono">#{{ o.order_id }}</td>
+                <td>{{ o.created_at.strftime('%b %d, %Y') }}</td>
+                <td class="text-mono">{{ o.item_count() }}</td>
+                <td class="text-mono">${{ "%.2f"|format(o.total_amount|float) }}</td>
+                <td><span class="badge status-{{ o.status }}">{{ o.status }}</span></td>
+                <td>
+                  <a href="{{ url_for('orders.detail', order_id=o.order_id) }}"
+                     class="btn btn-outline btn-sm">View</a>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        {% else %}
+          <div class="empty-state" style="padding:2.5rem 1rem;">
+            <div class="icon">📦</div>
+            <p>No orders yet.</p>
+            <a href="{{ url_for('products.list_products') }}" class="btn btn-primary btn-sm">Start shopping</a>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Upcoming refills -->
+    {% if subscriptions %}
+    <div class="col-12">
+      <div class="card" style="border-radius:var(--radius-xl);">
+        <div style="padding:.9rem 1.25rem;border-bottom:2px solid var(--c-border-lt);
+                    display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:.75rem;font-weight:700;text-transform:uppercase;
+                       letter-spacing:.08em;color:var(--c-muted);">Upcoming refills</span>
+          <a href="{{ url_for('account.subscriptions') }}" style="font-size:.82rem;">Manage</a>
+        </div>
+        <table class="table-min">
+          <tbody>
+            {% for s in subscriptions %}
+            <tr>
+              <td>{{ s.variant.product.name }}
+                <span style="color:var(--c-muted);font-size:.82rem;">· {{ s.variant.label() }}</span>
+              </td>
+              <td>{{ s.interval_label() }}</td>
+              <td class="text-mono">
+                {{ s.next_delivery_at.strftime('%b %d, %Y') if s.next_delivery_at else '—' }}
+              </td>
+              <td><span class="badge status-{{ s.status }}">{{ s.status }}</span></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+{% endblock %}

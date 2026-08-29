@@ -1,0 +1,58 @@
+{% extends "admin/base_admin.html" %}
+{% import "admin/_macros.html" as m %}
+{% block title %}Shipping Methods{% endblock %}
+
+{% block admin_content %}
+<div class="card" data-table-wrap>
+  <div class="card-header">
+    <h3 class="card-title">Shipping Methods <span class="text-secondary fs-6">({{ methods|length }})</span></h3>
+    <div class="card-tools d-flex gap-2">
+      {{ m.table_search('shipping-methods-table', 'Filter methods…') }}
+      <a href="{{ url_for('admin.new_shipping_method') }}" class="btn btn-primary btn-sm">
+        <i class="bi bi-plus-lg me-1"></i>New Method
+      </a>
+    </div>
+  </div>
+  <div class="card-body p-0">
+    {% if methods %}
+    <table class="table table-hover mb-0" id="shipping-methods-table">
+      <thead>
+        <tr><th data-sort>Order</th><th data-sort>Name</th><th>Description</th><th data-sort>Fee</th>
+            <th data-sort>Free over</th><th>ETA</th><th data-sort>Orders</th><th data-sort>Status</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for method in methods %}
+        <tr>
+          <td class="font-monospace text-secondary">{{ method.sort_order }}</td>
+          <td class="fw-semibold">{{ method.name }}</td>
+          <td class="small text-secondary">{{ method.description or '—' }}</td>
+          <td class="font-monospace">
+            {% if method.fee|float == 0 %}FREE{% else %}${{ "%.2f"|format(method.fee|float) }}{% endif %}
+          </td>
+          <td class="font-monospace">
+            {% if method.free_over is not none %}${{ "%.2f"|format(method.free_over|float) }}{% else %}—{% endif %}
+          </td>
+          <td class="small">{{ method.eta_label() }}</td>
+          <td class="font-monospace">{{ method.orders.count() }}</td>
+          <td>{{ m.bool_badge(method.is_active, 'Active', 'Disabled') }}</td>
+          <td>
+            <div class="d-flex gap-1">
+              <a href="{{ url_for('admin.edit_shipping_method', method_id=method.method_id) }}" class="btn btn-outline-primary btn-sm">Edit</a>
+              {{ m.delete_button(url_for('admin.delete_shipping_method', method_id=method.method_id), 'shipping-method-' ~ method.method_id, method.name) }}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+      <div class="text-center text-secondary p-5">
+        <i class="bi bi-truck fs-1 d-block mb-3 opacity-50"></i>
+        <p>No shipping methods. Checkout will charge zero delivery until you add one.</p>
+        <a href="{{ url_for('admin.new_shipping_method') }}" class="btn btn-primary btn-sm">Add a method</a>
+      </div>
+    {% endif %}
+    <p class="admin-table-empty text-center text-secondary p-4 mb-0" hidden>No rows match your filter.</p>
+  </div>
+</div>
+{% endblock %}

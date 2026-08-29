@@ -1,80 +1,96 @@
 {% extends "admin/base_admin.html" %}
+{% import "admin/_macros.html" as m %}
 {% block title %}Variants — {{ product.name }}{% endblock %}
 
 {% block admin_content %}
-<div class="d-flex align-items-center gap-3 mb-4">
-  <a href="{{ url_for('admin.products') }}" class="btn btn-ghost btn-sm">
+<div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+  <a href="{{ url_for('admin.products') }}" class="btn btn-outline-secondary btn-sm">
     <i class="bi bi-arrow-left"></i>
   </a>
   <div>
-    <p class="section-title mb-0">{{ product.category.name }} / {{ product.name }}</p>
-    <h2 class="mb-0">Variants</h2>
+    <p class="text-secondary small mb-0">{{ product.name }}</p>
+    <h3 class="mb-0">Variants</h3>
   </div>
-  <a href="{{ url_for('admin.new_variant', product_id=product.product_id) }}"
-     class="btn btn-primary btn-sm ms-auto">
-    <i class="bi bi-plus me-1"></i> Add Variant
-  </a>
+  <div class="ms-auto">
+    <a href="{{ url_for('admin.edit_product', product_id=product.product_id) }}" class="btn btn-outline-secondary btn-sm">
+      Edit product
+    </a>
+  </div>
 </div>
 
-<div class="card">
-  {% if product.variants.count() > 0 %}
-  <table class="table-min">
-    <thead>
-      <tr>
-        <th>ID</th>
-        <th>Size</th>
-        <th>Color</th>
-        <th>Price</th>
-        <th>Stock</th>
-        <th>Image URL</th>
-        <th></th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for v in product.variants %}
-      <tr>
-        <td class="text-mono" style="color:var(--c-muted);">{{ v.variant_id }}</td>
-        <td>{{ v.size or '—' }}</td>
-        <td>
-          {% if v.color %}
-            <span class="d-inline-flex align-items-center gap-2">
-              <span style="width:12px;height:12px;border-radius:50%;background:{{ v.color }};
-                           border:1px solid var(--c-border);"></span>
-              {{ v.color }}
-            </span>
-          {% else %}—{% endif %}
-        </td>
-        <td class="text-mono">${{ "%.2f"|format(v.price|float) }}</td>
-        <td class="text-mono">
-          <span {% if v.stock == 0 %}style="color:var(--c-danger);"
-                {% elif v.stock <= 5 %}style="color:var(--c-warning);"{% endif %}>
-            {{ v.stock }}
-          </span>
-        </td>
-        <td style="font-size:.75rem; color:var(--c-muted); max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-          {{ v.image or '—' }}
-        </td>
-        <td>
-          <div class="d-flex gap-1">
-            <a href="{{ url_for('admin.edit_variant', variant_id=v.variant_id) }}"
-               class="btn btn-outline btn-sm">Edit</a>
-            <form action="{{ url_for('admin.delete_variant', variant_id=v.variant_id) }}"
-                  method="post" onsubmit="return confirm('Delete this variant?')">
-              <button class="btn btn-danger-outline btn-sm" type="submit">
-                <i class="bi bi-trash"></i>
-              </button>
-            </form>
-          </div>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% else %}
-    <div class="empty-state">
-      <div class="icon"><i class="bi bi-layers"></i></div>
-      <p>No variants yet. Add size/color options.</p>
+<div class="card" data-table-wrap>
+  <div class="card-header">
+    <h3 class="card-title">Variants <span class="text-secondary fs-6">({{ product.variants.count() }})</span></h3>
+    <div class="card-tools d-flex gap-2">
+      {{ m.table_search('variants-table', 'Filter variants…') }}
+      <a href="{{ url_for('admin.new_variant', product_id=product.product_id) }}" class="btn btn-primary btn-sm">
+        <i class="bi bi-plus-lg me-1"></i>Add Variant
+      </a>
     </div>
-  {% endif %}
+  </div>
+  <div class="card-body p-0">
+    {% if product.variants.count() > 0 %}
+    <table class="table table-hover mb-0" id="variants-table">
+      <thead>
+        <tr>
+          <th data-sort>ID</th><th data-sort>SKU</th><th data-sort>Size</th><th data-sort>Shade</th>
+          <th data-sort>Price</th><th>Was</th><th data-sort>Stock</th><th data-sort>Weight</th>
+          <th data-sort>Batch</th><th data-sort>Expiry</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for v in product.variants %}
+        <tr>
+          <td class="font-monospace text-secondary">{{ v.variant_id }}</td>
+          <td class="font-monospace small">{{ v.sku or '—' }}</td>
+          <td>{{ v.volume or '—' }}</td>
+          <td>{{ v.shade or '—' }}</td>
+          <td class="font-monospace">${{ "%.2f"|format(v.price|float) }}</td>
+          <td class="font-monospace small text-secondary">
+            {% if v.compare_at_price %}
+              ${{ "%.2f"|format(v.compare_at_price|float) }}
+              <span class="badge text-bg-danger">−{{ v.discount_percent() }}%</span>
+            {% else %}—{% endif %}
+          </td>
+          <td class="font-monospace">
+            <span class="{% if v.stock == 0 %}text-danger fw-bold{% elif v.stock <= 10 %}text-warning fw-bold{% endif %}">
+              {{ v.stock }}
+            </span>
+            {% set waiting = v.stock_alerts.filter_by(notified_at=None).count() %}
+            {% if v.stock == 0 and waiting %}
+              <span class="badge text-bg-warning">{{ waiting }} waiting</span>
+            {% endif %}
+          </td>
+          <td class="font-monospace small text-secondary">
+            {{ v.weight_grams ~ 'g' if v.weight_grams else '—' }}
+          </td>
+          <td class="font-monospace small text-secondary">{{ v.batch_no or '—' }}</td>
+          <td class="font-monospace small">
+            {% if v.expiry_date %}
+              {% set days = v.days_until_expiry() %}
+              <span class="{% if days < 0 %}text-danger fw-bold{% elif days < 180 %}text-warning fw-bold{% endif %}">
+                {{ v.expiry_date.strftime('%b %Y') }}
+              </span>
+            {% else %}—{% endif %}
+          </td>
+          <td>
+            <div class="d-flex gap-1">
+              <a href="{{ url_for('admin.edit_variant', variant_id=v.variant_id) }}" class="btn btn-outline-primary btn-sm">Edit</a>
+              {{ m.delete_button(url_for('admin.delete_variant', variant_id=v.variant_id), 'variant-' ~ v.variant_id, v.label()) }}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+      <div class="text-center text-secondary p-5">
+        <i class="bi bi-layers fs-1 d-block mb-3 opacity-50"></i>
+        <p>No variants yet. Add at least one size before this product can be bought.</p>
+        <a href="{{ url_for('admin.new_variant', product_id=product.product_id) }}" class="btn btn-primary btn-sm">Add the first variant</a>
+      </div>
+    {% endif %}
+    <p class="admin-table-empty text-center text-secondary p-4 mb-0" hidden>No rows match your filter.</p>
+  </div>
 </div>
 {% endblock %}

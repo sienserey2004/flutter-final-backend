@@ -3,118 +3,355 @@
 
 {% block content %}
 
-<!-- Active promotions banner -->
 {% if active_promos %}
 <div class="promo-banner">
   {% for p in active_promos %}
-    🎉 <strong>{{ p.name }}</strong> — {{ p.discount_percent }}% off until {{ p.end_date.strftime('%b %d') }}
+    {{ p.name }} — {{ p.discount_percent|int }}% off selected products until {{ p.end_date.strftime('%b %d') }}
     {% if not loop.last %} &nbsp;·&nbsp; {% endif %}
   {% endfor %}
 </div>
 {% endif %}
 
-<!-- Hero -->
+<!-- ══ Hero ═══════════════════════════════════════════════════════════════ -->
 <section class="hero">
   <div class="hero-content">
-    <div class="hero-badges">
-      <span class="hero-badge">🌱 100% Organic</span>
-      <span class="hero-badge">🚚 Same-Day Delivery</span>
-      <span class="hero-badge">🌾 Farm Fresh</span>
+
+    <div class="hero-badges mb-4">
+      <span class="hero-badge"><i class="bi bi-flower1"></i> Care your skin naturally</span>
     </div>
-    <h1>Fresh From Farm<br>To Your Door</h1>
-    <p>Premium quality fruits & vegetables, picked at peak freshness and delivered the same day.</p>
-    <a href="{{ url_for('products.list_products') }}" class="btn btn-orange btn-lg">
-      Shop Fresh Now <i class="bi bi-arrow-right ms-1"></i>
-    </a>
-  </div>
-  <div class="hero-wave">
-    <svg viewBox="0 0 1440 80" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" style="width:100%;height:80px;">
-      <path d="M0,40 C240,80 480,0 720,40 C960,80 1200,0 1440,40 L1440,80 L0,80 Z" fill="#fdfbf5"/>
-    </svg>
+
+    <div class="row align-items-center g-4">
+
+      <!-- Headline -->
+      <div class="col-12 col-lg-5">
+        <h1 class="mb-4">Skincare for<br>Everyone</h1>
+
+        <div class="d-flex align-items-center gap-3 mt-4">
+          {% set featured = bestsellers[0] if bestsellers else (new_in[0] if new_in else None) %}
+          {% if featured and featured.primary_image_url() %}
+            <img src="{{ featured.primary_image_url() }}" alt=""
+                 style="width:88px;height:88px;object-fit:cover;border-radius:50%;
+                        border:2px solid rgba(255,255,255,.2);flex-shrink:0;">
+          {% endif %}
+          <p style="color:rgba(255,255,255,.72);font-size:.82rem;text-transform:uppercase;
+                    letter-spacing:.09em;line-height:1.7;margin:0;max-width:190px;">
+            Keep your skin<br>healthy and<br>young looking
+          </p>
+        </div>
+      </div>
+
+      <!-- Blob image + floating CTA -->
+      <div class="col-12 col-lg-4 position-relative">
+        <div class="hero-blob">
+          {% if featured and featured.primary_image_url() %}
+            <img src="{{ featured.primary_image_url() }}" alt="{{ featured.name }}"/>
+          {% else %}
+            <div class="hero-blob-empty h-100">✦</div>
+          {% endif %}
+        </div>
+        <a href="{{ url_for('products.list_products') }}" class="disc-cta"
+           style="position:absolute;left:2%;bottom:12%;">
+          Shop<br>Now
+        </a>
+      </div>
+
+      <!-- Rotating badge + note -->
+      <div class="col-12 col-lg-3">
+        <div class="d-flex d-lg-block align-items-center gap-4">
+          <svg class="circle-badge mb-lg-4" viewBox="0 0 100 100" aria-hidden="true">
+            <defs>
+              <path id="circlePath"
+                    d="M 50,50 m -37,0 a 37,37 0 1,1 74,0 a 37,37 0 1,1 -74,0"/>
+            </defs>
+            <text><textPath href="#circlePath">Beauty · Skincare · Quality ·&#160;</textPath></text>
+            <text x="50" y="56" text-anchor="middle"
+                  style="font-size:20px;fill:var(--c-lime);letter-spacing:0;">✦</text>
+          </svg>
+
+          <div>
+            <p class="section-title mb-2" style="color:rgba(255,255,255,.6);">Natural growth</p>
+            <h3 style="color:#fff;font-size:1.9rem;line-height:1.05;">
+              Always be gentle with your face
+            </h3>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stat strip -->
+    <div class="hero-stats">
+      <div>
+        <span class="hero-stat-num">{{ stats.inci_pct }}%</span>
+        <span class="hero-stat-label">Full INCI listed<br>on every product page</span>
+      </div>
+      <div>
+        <span class="hero-stat-num">{{ stats.actives }}</span>
+        <span class="hero-stat-label">Active ingredients<br>documented in the glossary</span>
+      </div>
+      <div>
+        <span class="hero-stat-num">{{ stats.cruelty_free }}</span>
+        <span class="hero-stat-label">Cruelty-free products<br>from {{ stats.brands }} brands</span>
+      </div>
+    </div>
   </div>
 </section>
 
 <div class="page-container">
 
-  <!-- Features Strip -->
-  <div class="features-strip d-flex flex-wrap gap-3 justify-content-around">
-    <div class="feature-item">
-      <div class="feature-icon">🌿</div>
-      <h6>100% Organic</h6>
-      <p>Certified fresh produce</p>
-    </div>
-    <div class="feature-item">
-      <div class="feature-icon">🚚</div>
-      <h6>Fast Delivery</h6>
-      <p>Same-day to your door</p>
-    </div>
-    <div class="feature-item">
-      <div class="feature-icon">✅</div>
-      <h6>Quality Checked</h6>
-      <p>Freshness guaranteed</p>
-    </div>
-    <div class="feature-item">
-      <div class="feature-icon">💚</div>
-      <h6>Eco-Friendly</h6>
-      <p>Sustainable packaging</p>
-    </div>
-  </div>
-
-  <!-- Categories -->
-  {% if categories %}
-  <div class="mb-5">
-    <p class="section-title">Browse by Category</p>
-    <h2 class="section-heading mb-3">What are you looking for?</h2>
-    <div class="d-flex flex-wrap gap-2">
-      <a href="{{ url_for('products.list_products') }}" class="category-pill active">
-        🛒 All Products
-      </a>
-      {% for cat in categories %}
-        <a href="{{ url_for('products.list_products', category=cat.category_id) }}"
-           class="category-pill">
-          🍃 {{ cat.name }}
+  <!-- ══ Bestsellers ══════════════════════════════════════════════════════ -->
+  {% if bestsellers %}
+  <div class="d-flex align-items-start justify-content-between mb-4 flex-wrap gap-3">
+    <h2 style="max-width:420px;">Our best selling<br>Products</h2>
+    <div class="d-flex flex-wrap gap-2 align-items-center" style="max-width:460px;">
+      <span class="section-title me-1">Beauty care:</span>
+      {% for c in concerns[:4] %}
+        <a class="tag-pill" href="{{ url_for('products.by_concern', slug=c.slug) }}">
+          #{{ c.name|lower|replace(' & ','')|replace(' ','') }}
         </a>
       {% endfor %}
     </div>
   </div>
+  <div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 g-4 mb-5">
+    {% for product in bestsellers[:4] %}{% include "products/_card.html" %}{% endfor %}
+  </div>
   {% endif %}
 
-  <!-- Featured Products -->
-  <div class="mb-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+  <!-- ══ Bento band ═══════════════════════════════════════════════════════ -->
+  <div class="bento mb-5">
+
+    <!-- Beauty begins from within -->
+    <div class="bento-cell tone-green span-7 d-flex flex-column justify-content-center">
+      <span class="pill-badge mb-3" style="align-self:flex-start;">
+        <i class="bi bi-stars"></i> Make your skin beautiful
+      </span>
+      <h2 style="max-width:460px;">Beauty begins<br>from within.</h2>
+      <p style="max-width:430px;">
+        Great skin doesn't come from many products, just the right ones used in the
+        right order. Tell us your skin type and concerns and we'll build the routine.
+      </p>
+      <div class="d-flex align-items-center gap-4 flex-wrap mt-2">
+        <a href="{{ url_for('main.ingredient_glossary') }}"
+           style="color:#fff;font-weight:600;text-decoration:underline;text-underline-offset:4px;">
+          Read the ingredient glossary
+        </a>
+        <div style="width:1px;height:38px;background:rgba(255,255,255,.22);"></div>
+        <div>
+          <div class="hero-stat-num" style="font-size:1.6rem;">{{ stats.products }}</div>
+          <div style="font-size:.78rem;color:rgba(255,255,255,.62);">products in the catalog</div>
+        </div>
+      </div>
+      <div class="mt-4 d-flex gap-2 flex-wrap">
+        <a href="{{ url_for('products.for_you') }}" class="btn btn-primary">Get glowing</a>
+        <a href="{{ url_for('products.list_products') }}" class="btn btn-on-dark">Learn more</a>
+      </div>
+    </div>
+
+    <!-- Shop by skin type -->
+    <div class="bento-cell tone-sage span-5">
+      <p class="section-title mb-3">Matched to you</p>
+      <h3 class="mb-3">Shop by skin type</h3>
+      <div class="d-flex flex-wrap gap-2">
+        {% for s in skin_types %}
+          <a class="filter-chip" href="{{ url_for('products.list_products', skin_type=s.skin_type_id) }}">
+            {{ s.icon or '' }} {{ s.name }}
+          </a>
+        {% endfor %}
+      </div>
+      <p class="mt-4 mb-0" style="font-size:.85rem;">
+        Not sure which you are? The
+        <a href="{{ url_for('account.skin_profile') if current_user.is_authenticated else url_for('auth.register') }}"
+           style="font-weight:700;text-decoration:underline;text-underline-offset:3px;">skin quiz</a>
+        takes two minutes.
+      </p>
+    </div>
+
+    <!-- Shop by concern -->
+    <div class="bento-cell tone-cream span-8">
+      <div class="d-flex align-items-end justify-content-between mb-3 flex-wrap gap-2">
+        <div>
+          <p class="section-title mb-1">Start here</p>
+          <h3 class="mb-0">Revitalize solutions for beautiful skin</h3>
+        </div>
+      </div>
+      <div class="row row-cols-2 row-cols-md-4 g-2">
+        {% for c in concerns %}
+          <div class="col">
+            <a class="tile-link" href="{{ url_for('products.by_concern', slug=c.slug) }}">
+              <span class="tile-icon">{{ c.icon or '•' }}</span>
+              <span class="tile-name">{{ c.name }}</span>
+            </a>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Routine steps -->
+    <div class="bento-cell tone-white span-4">
+      <p class="section-title mb-1">Radiance starts with</p>
+      <h3 class="mb-3">Routine</h3>
+      <div class="d-flex flex-column gap-2">
+        {% for num, label in [(1,'Cleanse'),(2,'Tone'),(3,'Treat'),(4,'Moisturize'),(5,'Protect')] %}
+          <a href="{{ url_for('products.list_products', step=num) }}"
+             class="d-flex align-items-center gap-3 text-decoration-none"
+             style="padding:.4rem 0;border-bottom:1px solid var(--c-border-lt);">
+            <span class="routine-step">{{ num }}</span>
+            <span style="font-weight:700;color:var(--c-text);font-size:.92rem;">{{ label }}</span>
+            <i class="bi bi-arrow-right ms-auto" style="color:var(--c-muted);"></i>
+          </a>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ Elevate your skincare experience ═════════════════════════════════ -->
+  <div class="row align-items-center g-4 mb-3">
+    <div class="col-12 col-lg-5">
+      <h2 style="font-size:clamp(2.2rem,5.5vw,4.4rem);">Elevate Your</h2>
+      <p style="max-width:330px;">
+        Let your skin renew itself. Build a routine you'll actually keep to, from
+        products that tell you exactly what's in them.
+      </p>
+    </div>
+    <div class="col-12 col-lg-7">
+      <div class="d-flex align-items-center gap-3 justify-content-lg-end flex-wrap">
+        {% for p in new_in[:2] %}
+          {% if p.primary_image_url() %}
+            <a href="{{ url_for('products.detail', product_id=p.product_id) }}">
+              <img src="{{ p.primary_image_url() }}" alt="{{ p.name }}"
+                   style="width:132px;height:78px;object-fit:cover;border-radius:var(--radius);">
+            </a>
+          {% endif %}
+        {% endfor %}
+        <a href="{{ url_for('products.list_products') }}"
+           style="font-weight:700;text-decoration:underline;text-underline-offset:5px;">
+          See more <i class="bi bi-arrow-right"></i>
+        </a>
+      </div>
+    </div>
+  </div>
+  <h2 class="mb-5" style="font-size:clamp(2.2rem,5.5vw,4.4rem);">Skincare Experience</h2>
+
+  <!-- ══ Kits + brand promise ═════════════════════════════════════════════ -->
+  <div class="bento mb-5">
+    {% if bundles %}
+      <div class="bento-cell tone-white span-8" style="padding:1.6rem;">
+        <div class="d-flex align-items-end justify-content-between mb-3 flex-wrap gap-2">
+          <div>
+            <p class="section-title mb-1">Save on a set</p>
+            <h3 class="mb-0">Let's make your best version</h3>
+          </div>
+          <a href="{{ url_for('products.bundles') }}" class="btn btn-outline btn-sm">All kits</a>
+        </div>
+        <div class="row row-cols-1 row-cols-md-3 g-3">
+          {% for b in bundles %}
+            <div class="col">
+              <a href="{{ url_for('products.bundle_detail', slug=b.slug) }}"
+                 class="text-decoration-none d-block h-100">
+                <div style="aspect-ratio:4/3;border-radius:var(--radius);overflow:hidden;
+                            background:var(--c-bg-soft);border:1px solid var(--c-border-lt);">
+                  {% if b.image_absolute() %}
+                    <img src="{{ b.image_absolute() }}" alt="{{ b.name }}" loading="lazy"
+                         style="width:100%;height:100%;object-fit:cover;">
+                  {% endif %}
+                </div>
+                <div style="font-weight:700;color:var(--c-text);font-size:.9rem;margin-top:.6rem;">
+                  {{ b.name }}
+                </div>
+                <div class="d-flex align-items-baseline gap-2 mt-1">
+                  <span class="product-price" style="font-size:.92rem;">
+                    ${{ "%.2f"|format(b.price|float) }}
+                  </span>
+                  {% if b.savings() > 0 %}
+                    <span class="price-was">${{ "%.2f"|format(b.items_total()) }}</span>
+                  {% endif %}
+                </div>
+              </a>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+
+    <div class="bento-cell tone-peach span-4 d-flex flex-column justify-content-center">
+      <p class="section-title mb-2">Powered by</p>
+      <h3 class="mb-3" style="max-width:260px;">Harmony for your skin and soul</h3>
+      <p style="font-size:.88rem;">
+        Fragrance-free where it matters, full ingredient decks everywhere, and a
+        period-after-opening date on every jar.
+      </p>
+      <div class="d-flex flex-wrap gap-2 mt-2">
+        <a class="tag-pill" href="{{ url_for('products.list_products', claim='vegan') }}">#vegan</a>
+        <a class="tag-pill" href="{{ url_for('products.list_products', claim='fragrance_free') }}">#fragrancefree</a>
+        <a class="tag-pill" href="{{ url_for('products.list_products', claim='cruelty_free') }}">#crueltyfree</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ On sale ══════════════════════════════════════════════════════════ -->
+  {% if on_sale %}
+  <div class="d-flex align-items-end justify-content-between mb-4">
     <div>
-      <p class="section-title mb-0">Today's Picks</p>
-      <h2 class="section-heading mb-0">Featured Products</h2>
+      <p class="section-title mb-1">Limited time</p>
+      <h3 class="mb-0">On sale now</h3>
     </div>
-    <a href="{{ url_for('products.list_products') }}"
-       class="btn btn-outline btn-sm">
-      View all <i class="bi bi-arrow-right ms-1"></i>
+    <a href="{{ url_for('products.list_products', on_sale=1) }}" class="btn btn-ghost btn-sm">
+      See all <i class="bi bi-arrow-right"></i>
     </a>
   </div>
-
-  {% if featured %}
-  <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 g-3 mb-5">
-    {% for product in featured %}
-      {% include "products/_card.html" %}
-    {% endfor %}
+  <div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 g-4 mb-5">
+    {% for product in on_sale[:4] %}{% include "products/_card.html" %}{% endfor %}
   </div>
-  {% else %}
-    <div class="empty-state">
-      <div class="icon">🍎</div>
-      <p>No products yet. <a href="{{ url_for('admin.new_product') }}">Add one →</a></p>
-    </div>
   {% endif %}
 
-  <!-- CTA Section -->
-  <div class="text-center py-5" style="background:linear-gradient(135deg,var(--c-primary-lt),var(--c-yellow-lt));
-       border-radius:var(--radius-xl);padding:3rem 2rem!important;margin-bottom:1rem;">
-    <div style="font-size:3rem;margin-bottom:1rem;">🥭🍓🍊🍋🍇</div>
-    <h2 style="font-weight:800;color:var(--c-text);margin-bottom:.5rem;">Taste the Difference</h2>
-    <p style="max-width:420px;margin:0 auto 1.5rem;color:var(--c-muted);">
-      Join thousands of happy customers who enjoy farm-fresh produce every week.
-    </p>
-    <a href="{{ url_for('products.list_products') }}" class="btn btn-primary btn-lg">
-      Start Shopping <i class="bi bi-basket me-1"></i>
+  <!-- ══ New in ═══════════════════════════════════════════════════════════ -->
+  <div class="d-flex align-items-end justify-content-between mb-4">
+    <div>
+      <p class="section-title mb-1">Just landed</p>
+      <h3 class="mb-0">New in</h3>
+    </div>
+    <a href="{{ url_for('products.list_products') }}" class="btn btn-ghost btn-sm">
+      Shop all <i class="bi bi-arrow-right"></i>
     </a>
+  </div>
+  <div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 g-4 mb-5">
+    {% for product in new_in[:8] %}{% include "products/_card.html" %}{% endfor %}
+  </div>
+
+  <!-- ══ Shelves + brands ═════════════════════════════════════════════════ -->
+  <div class="bento">
+    {% if shelf_categories %}
+    <div class="bento-cell tone-cream span-6">
+      <p class="section-title mb-1">Browse the shelf</p>
+      <h3 class="mb-3">By product type</h3>
+      <div class="d-flex flex-wrap gap-2">
+        {% for cat in shelf_categories %}
+          <a class="filter-chip" href="{{ url_for('products.list_products', category=cat.category_id) }}">
+            {{ cat.name }}
+            <span style="font-family:var(--font-mono);font-size:.72rem;opacity:.65;">
+              {{ cat.products.count() }}
+            </span>
+          </a>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    {% if brands %}
+    <div class="bento-cell tone-sage span-6">
+      <p class="section-title mb-1">Who we stock</p>
+      <h3 class="mb-3">Brands</h3>
+      <div class="d-flex flex-wrap gap-2">
+        {% for b in brands %}
+          <a class="filter-chip" href="{{ url_for('products.by_brand', slug=b.slug) }}">
+            {{ b.name }}
+            <span style="font-family:var(--font-mono);font-size:.72rem;opacity:.65;">
+              {{ b.products.count() }}
+            </span>
+          </a>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
   </div>
 
 </div>

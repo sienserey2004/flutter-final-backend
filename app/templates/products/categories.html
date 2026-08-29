@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Shop by Category{% endblock %}
+
+{% block content %}
+<div class="page-container">
+
+  <div class="mb-4">
+    <p class="section-title mb-1">Browse</p>
+    <h2 class="mb-0" style="font-weight:800;">Shop by Category</h2>
+  </div>
+
+  {% if roots %}
+  <div class="row g-4">
+    {% for root in roots %}
+      {% set total = totals.get(root.category_id, 0) %}
+      <div class="col-12 col-md-6 col-lg-4">
+        <div class="card h-100" style="border-radius:var(--radius-xl); overflow:hidden;">
+          {% if root.image %}
+            <img src="{{ root.image }}" alt="{{ root.name }}" class="w-100"
+                 style="height:160px; object-fit:cover;">
+          {% endif %}
+          <div class="card-body">
+            <div class="d-flex align-items-start justify-content-between gap-2 mb-2">
+              <h3 class="h5 mb-0" style="font-weight:800;">
+                <a href="{{ url_for('products.list_products', category=root.category_id) }}"
+                   class="text-decoration-none" style="color:inherit;">{{ root.name }}</a>
+              </h3>
+              <span style="font-size:.8rem; color:var(--c-muted);
+                           font-family:var(--font-mono); font-weight:600; white-space:nowrap;">
+                {{ total }} item{{ 's' if total != 1 }}
+              </span>
+            </div>
+
+            {% if root.description %}
+              <p class="small text-secondary mb-3">{{ root.description }}</p>
+            {% endif %}
+
+            {% set children = root.children | sort(attribute='sort_order') %}
+            {% if children %}
+              <ul class="list-unstyled mb-0 d-flex flex-wrap gap-2">
+                {% for child in children %}
+                  <li>
+                    <a href="{{ url_for('products.list_products', category=child.category_id) }}"
+                       class="btn btn-outline-primary btn-sm">
+                      {{ child.name }}
+                      <span class="opacity-75">({{ counts.get(child.category_id, 0) }})</span>
+                    </a>
+                  </li>
+                {% endfor %}
+              </ul>
+            {% else %}
+              <a href="{{ url_for('products.list_products', category=root.category_id) }}"
+                 class="btn btn-primary btn-sm">Shop {{ root.name }}</a>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+  {% else %}
+    <p class="text-secondary">No categories yet.</p>
+  {% endif %}
+</div>
+{% endblock %}

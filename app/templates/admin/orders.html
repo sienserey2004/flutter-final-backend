@@ -1,78 +1,56 @@
 {% extends "admin/base_admin.html" %}
+{% import "admin/_macros.html" as m %}
 {% block title %}Orders — Admin{% endblock %}
 
 {% block admin_content %}
-<div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
-  <div>
-    <p class="section-title mb-0">Admin</p>
-    <h2 class="mb-0">Orders</h2>
+<div class="card" data-table-wrap>
+  <div class="card-header">
+    <h3 class="card-title">Orders <span class="text-secondary fs-6">({{ orders|length }})</span></h3>
+    <div class="card-tools">{{ m.table_search('orders-table', 'Filter orders…') }}</div>
   </div>
-  <!-- Status filter -->
-  <div class="d-flex gap-2 flex-wrap">
-    <a href="{{ url_for('admin.orders') }}"
-       class="btn btn-sm {% if not current_status %}btn-primary{% else %}btn-outline{% endif %}">
-      All
-    </a>
+
+  <div class="card-body border-bottom d-flex gap-2 flex-wrap">
+    <a href="{{ url_for('admin.orders') }}" class="btn btn-sm {% if not current_status %}btn-primary{% else %}btn-outline-secondary{% endif %}">All</a>
     {% for s in statuses %}
       <a href="{{ url_for('admin.orders', status=s) }}"
-         class="btn btn-sm {% if current_status==s %}btn-primary{% else %}btn-outline{% endif %}">
-        {{ s }}
-      </a>
+         class="btn btn-sm {% if current_status==s %}btn-primary{% else %}btn-outline-secondary{% endif %}">{{ s }}</a>
     {% endfor %}
   </div>
-</div>
 
-<div class="card">
-  {% if orders %}
-  <table class="table-min">
-    <thead>
-      <tr>
-        <th>Order #</th>
-        <th>Customer</th>
-        <th>Date</th>
-        <th>Items</th>
-        <th>Total</th>
-        <th>Status</th>
-        <th>Payment</th>
-        <th></th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for order in orders %}
-      <tr>
-        <td class="text-mono" style="font-weight:500;">#{{ order.order_id }}</td>
-        <td>
-          <div style="font-weight:500;">{{ order.user.name }}</div>
-          <div style="font-size:.75rem; color:var(--c-muted);">{{ order.user.email }}</div>
-        </td>
-        <td style="font-size:.8rem; color:var(--c-muted);">
-          {{ order.created_at.strftime('%b %d, %Y') }}
-        </td>
-        <td class="text-mono">{{ order.items.count() }}</td>
-        <td class="text-mono" style="font-weight:500;">
-          ${{ "%.2f"|format(order.total_amount|float) }}
-        </td>
-        <td><span class="badge status-{{ order.status }}">{{ order.status }}</span></td>
-        <td style="font-size:.8rem;">
-          {% if order.payment %}
-            <span class="badge {% if order.payment.status=='Paid' %}badge-success{% else %}badge-warning{% endif %}">
-              {{ order.payment.status }}
-            </span>
-          {% else %}—{% endif %}
-        </td>
-        <td>
-          <a href="{{ url_for('admin.order_detail', order_id=order.order_id) }}"
-             class="btn btn-outline btn-sm">View</a>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% else %}
-    <div class="empty-state">
-      <div class="icon"><i class="bi bi-receipt"></i></div>
-      <p>No orders found.</p>
-    </div>
-  {% endif %}
+  <div class="card-body p-0">
+    {% if orders %}
+    <table class="table table-hover mb-0 text-nowrap" id="orders-table">
+      <thead>
+        <tr>
+          <th data-sort>Order #</th><th data-sort>Customer</th><th data-sort>Date</th><th data-sort>Items</th>
+          <th data-sort>Total</th><th data-sort>Status</th><th>Payment</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for order in orders %}
+        <tr>
+          <td class="font-monospace">#{{ order.order_id }}</td>
+          <td>
+            <div>{{ order.user.name }}</div>
+            <div class="small text-secondary">{{ order.user.email }}</div>
+          </td>
+          <td class="text-secondary small">{{ order.created_at.strftime('%b %d, %Y') }}</td>
+          <td class="font-monospace">{{ order.items.count() }}</td>
+          <td class="font-monospace">${{ "%.2f"|format(order.total_amount|float) }}</td>
+          <td>{{ m.status_badge(order.status) }}</td>
+          <td>{% if order.payment %}{{ m.status_badge(order.payment.status) }}{% else %}—{% endif %}</td>
+          <td><a href="{{ url_for('admin.order_detail', order_id=order.order_id) }}" class="btn btn-outline-secondary btn-sm">View</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+      <div class="text-center text-secondary p-5">
+        <i class="bi bi-receipt fs-1 d-block mb-3 opacity-50"></i>
+        <p class="mb-0">No orders found.</p>
+      </div>
+    {% endif %}
+    <p class="admin-table-empty text-center text-secondary p-4 mb-0" hidden>No rows match your filter.</p>
+  </div>
 </div>
 {% endblock %}

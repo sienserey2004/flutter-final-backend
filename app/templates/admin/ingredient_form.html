@@ -1,0 +1,67 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}{{ 'Edit' if ingredient else 'New' }} Ingredient{% endblock %}
+
+{% block admin_content %}
+<div class="d-flex align-items-center gap-2 mb-3">
+  <a href="{{ url_for('admin.ingredients') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i></a>
+  <h3 class="mb-0">{{ 'Edit' if ingredient else 'New' }} Ingredient</h3>
+</div>
+
+<div class="row">
+  <div class="col-12 col-lg-7 col-xl-6">
+    <div class="card">
+      <div class="card-body">
+        <form method="post">
+          <div class="row g-3">
+            <div class="col-12 col-sm-6">
+              <label class="form-label" for="name">Common name</label>
+              <input type="text" class="form-control" id="name" name="name"
+                     value="{{ ingredient.name if ingredient else '' }}"
+                     placeholder="Niacinamide" required autofocus>
+            </div>
+            <div class="col-12 col-sm-6">
+              <label class="form-label" for="inci_name">INCI name</label>
+              <input type="text" class="form-control" id="inci_name" name="inci_name"
+                     value="{{ ingredient.inci_name or '' if ingredient else '' }}"
+                     placeholder="Niacinamide">
+            </div>
+            <div class="col-12">
+              <label class="form-label" for="benefits">What it does</label>
+              <textarea class="form-control" id="benefits" name="benefits" rows="2"
+                        placeholder="One clear sentence — this shows on the product page.">{{ ingredient.benefits or '' if ingredient else '' }}</textarea>
+            </div>
+            <div class="col-12">
+              <label class="form-label" for="description">Longer description</label>
+              <textarea class="form-control" id="description" name="description"
+                        rows="3">{{ ingredient.description or '' if ingredient else '' }}</textarea>
+            </div>
+            <div class="col-12">
+              <label class="form-label" for="caution_note">Caution note</label>
+              <textarea class="form-control" id="caution_note" name="caution_note" rows="2"
+                        placeholder="Night use only, avoid with AHAs, not for pregnancy…">{{ ingredient.caution_note or '' if ingredient else '' }}</textarea>
+              <div class="form-text">Surfaces as a warning box on every product containing this ingredient.</div>
+            </div>
+            <div class="col-12">
+              <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" role="switch" id="is_active_ingredient"
+                       name="is_active_ingredient" value="1"
+                       {% if not ingredient or ingredient.is_active_ingredient %}checked{% endif %}>
+                <label class="form-check-label" for="is_active_ingredient">Active ingredient (appears in the storefront ingredient filter)</label>
+              </div>
+            </div>
+            {% if ingredient %}
+              <div class="col-12">
+                <div class="font-monospace text-secondary small">Slug: {{ ingredient.slug }} · used in {{ ingredient.product_links.count() }} product(s)</div>
+              </div>
+            {% endif %}
+            <div class="col-12 d-flex gap-2 mt-2">
+              <button type="submit" class="btn btn-primary">{{ 'Update' if ingredient else 'Create' }} Ingredient</button>
+              <a href="{{ url_for('admin.ingredients') }}" class="btn btn-outline-secondary">Cancel</a>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit' if address else 'New' }} Address{% endblock %}
+
+{% block content %}
+<div class="page-container" style="max-width:620px;">
+
+  <div class="d-flex align-items-center gap-3 mb-4">
+    <a href="{{ url_for('account.addresses') }}" class="btn btn-ghost btn-sm">
+      <i class="bi bi-arrow-left"></i>
+    </a>
+    <div>
+      <p class="section-title mb-0">Address book</p>
+      <h2 style="font-weight:800;margin:0;">{{ 'Edit' if address else 'New' }} address</h2>
+    </div>
+  </div>
+
+  <div class="card" style="border-radius:var(--radius-xl);">
+    <div class="card-body p-4">
+      <form method="post">
+        <div class="row g-3">
+          <div class="col-12 col-sm-4">
+            <label class="form-label" for="label">Label</label>
+            <input type="text" class="form-control" id="label" name="label"
+                   value="{{ address.label if address else 'Home' }}" placeholder="Home, Work…">
+          </div>
+          <div class="col-12 col-sm-8">
+            <label class="form-label" for="recipient_name">Recipient name</label>
+            <input type="text" class="form-control" id="recipient_name" name="recipient_name"
+                   value="{{ address.recipient_name if address else current_user.name }}" required>
+          </div>
+          <div class="col-12 col-sm-6">
+            <label class="form-label" for="phone">Phone</label>
+            <input type="tel" class="form-control" id="phone" name="phone"
+                   value="{{ address.phone if address else (current_user.phone or '') }}" required>
+          </div>
+          <div class="col-12">
+            <label class="form-label" for="line1">Address line 1</label>
+            <input type="text" class="form-control" id="line1" name="line1"
+                   value="{{ address.line1 if address else '' }}"
+                   placeholder="House number, street" required>
+          </div>
+          <div class="col-12">
+            <label class="form-label" for="line2">Address line 2</label>
+            <input type="text" class="form-control" id="line2" name="line2"
+                   value="{{ address.line2 or '' if address else '' }}"
+                   placeholder="Apartment, district, landmark">
+          </div>
+          <div class="col-12 col-sm-5">
+            <label class="form-label" for="city">City</label>
+            <input type="text" class="form-control" id="city" name="city"
+                   value="{{ address.city if address else '' }}" required>
+          </div>
+          <div class="col-6 col-sm-3">
+            <label class="form-label" for="state">Province</label>
+            <input type="text" class="form-control" id="state" name="state"
+                   value="{{ address.state or '' if address else '' }}">
+          </div>
+          <div class="col-6 col-sm-4">
+            <label class="form-label" for="postal_code">Postal code</label>
+            <input type="text" class="form-control" id="postal_code" name="postal_code"
+                   value="{{ address.postal_code or '' if address else '' }}">
+          </div>
+          <div class="col-12">
+            <label class="form-label" for="country">Country</label>
+            <input type="text" class="form-control" id="country" name="country"
+                   value="{{ address.country if address else 'Cambodia' }}">
+          </div>
+          <div class="col-12">
+            <label class="d-flex align-items-center gap-2"
+                   style="font-weight:700;font-size:.9rem;cursor:pointer;">
+              <input type="checkbox" name="is_default" value="1"
+                     {% if address and address.is_default %}checked{% endif %}
+                     style="accent-color:var(--c-primary);width:18px;height:18px;">
+              Use as my default delivery address
+            </label>
+          </div>
+          <div class="col-12 d-flex gap-2 mt-2">
+            <button type="submit" class="btn btn-primary">
+              {{ 'Update' if address else 'Save' }} address
+            </button>
+            <a href="{{ url_for('account.addresses') }}" class="btn btn-ghost">Cancel</a>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

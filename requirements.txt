@@ -13,3 +13,5 @@ python-dotenv==1.0.1
 Pillow==10.4.0
 bakong-khqr[image]==0.6.0
 requests==2.31.0
+gunicorn==23.0.0
+Flask-Cors==5.0.0

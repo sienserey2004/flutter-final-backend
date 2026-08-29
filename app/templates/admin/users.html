@@ -1,51 +1,144 @@
 {% extends "admin/base_admin.html" %}
-{% block title %}Users — Admin{% endblock %}
+{% import "admin/_macros.html" as m %}
+{% block title %}Customers — Admin{% endblock %}
 
 {% block admin_content %}
-<p class="section-title">Admin</p>
-<h2 class="mb-4">Users <span class="text-mono" style="font-size:1rem; color:var(--c-muted);">{{ users|length }}</span></h2>
+
+<!-- Summary -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-lg-3">{{ m.small_box(stats.total, 'Total accounts', 'people', 'primary') }}</div>
+  <div class="col-6 col-lg-3">{{ m.small_box(stats.active, 'Active', 'person-check', 'success') }}</div>
+  <div class="col-6 col-lg-3">{{ m.small_box(stats.inactive, 'Deactivated', 'person-slash', 'secondary') }}</div>
+  <div class="col-6 col-lg-3">{{ m.small_box(stats.new_30d, 'New in 30 days', 'person-plus', 'info') }}</div>
+</div>
 
 <div class="card">
-  <table class="table-min">
-    <thead>
-      <tr>
-        <th>ID</th>
-        <th>Name</th>
-        <th>Email</th>
-        <th>Phone</th>
-        <th>Roles</th>
-        <th>Joined</th>
-        <th></th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for user in users %}
-      <tr>
-        <td class="text-mono" style="color:var(--c-muted);">{{ user.user_id }}</td>
-        <td style="font-weight:500;">{{ user.name }}</td>
-        <td style="font-size:.85rem;">{{ user.email }}</td>
-        <td style="font-size:.85rem; color:var(--c-muted);">{{ user.phone or '—' }}</td>
-        <td>
-          {% for role in user.roles %}
-            <span class="badge badge-neutral me-1">{{ role.role_name }}</span>
+  <div class="card-header">
+    <h3 class="card-title">Customers <span class="text-secondary fs-6">({{ users|length }})</span></h3>
+    <div class="card-tools">
+      <a href="{{ url_for('admin.new_user') }}" class="btn btn-primary btn-sm">
+        <i class="bi bi-person-plus me-1" aria-hidden="true"></i>New customer
+      </a>
+    </div>
+  </div>
+
+  <!-- Search + filters -->
+  <div class="card-body border-bottom">
+    <form method="get" action="{{ url_for('admin.users') }}" class="row g-2 align-items-center">
+      <div class="col-12 col-md-5">
+        <div class="input-group input-group-sm">
+          <span class="input-group-text"><i class="bi bi-search" aria-hidden="true"></i></span>
+          <input type="search" name="q" value="{{ q }}" class="form-control"
+                 placeholder="Name, email or phone…" aria-label="Search customers">
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <select name="role" class="form-select form-select-sm" aria-label="Filter by role">
+          <option value="">All roles</option>
+          <option value="Admin"    {{ 'selected' if role == 'Admin' }}>Admins</option>
+          <option value="Customer" {{ 'selected' if role == 'Customer' }}>Customers</option>
+        </select>
+      </div>
+      <div class="col-6 col-md-2">
+        <select name="status" class="form-select form-select-sm" aria-label="Filter by status">
+          <option value="">Any status</option>
+          <option value="active"   {{ 'selected' if status == 'active' }}>Active</option>
+          <option value="inactive" {{ 'selected' if status == 'inactive' }}>Deactivated</option>
+        </select>
+      </div>
+      <div class="col-12 col-md-2 d-flex gap-2">
+        <button type="submit" class="btn btn-outline-primary btn-sm flex-grow-1">Filter</button>
+        {% if q or role or status %}
+          <a href="{{ url_for('admin.users') }}" class="btn btn-outline-secondary btn-sm"
+             title="Clear filters" aria-label="Clear filters"><i class="bi bi-x-lg"></i></a>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+
+  <div class="card-body p-0">
+    {% if users %}
+    <div class="table-responsive">
+      <table class="table table-hover mb-0 align-middle" id="users-table">
+        <thead>
+          <tr>
+            <th data-sort>ID</th>
+            <th data-sort>Name</th>
+            <th data-sort>Email</th>
+            <th data-sort>Phone</th>
+            <th>Roles</th>
+            <th>Status</th>
+            <th data-sort>Orders</th>
+            <th data-sort>Joined</th>
+            <th class="text-end">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for user in users %}
+          {% set is_self = user.user_id == current_user.user_id %}
+          <tr class="{{ '' if user.is_active else 'opacity-50' }}">
+            <td class="font-monospace">{{ user.user_id }}</td>
+            <td class="fw-semibold">
+              <a href="{{ url_for('admin.user_detail', user_id=user.user_id) }}"
+                 class="link-body-emphasis">{{ user.name }}</a>
+              {% if is_self %}<span class="badge text-bg-light ms-1">you</span>{% endif %}
+            </td>
+            <td class="small">{{ user.email }}</td>
+            <td class="small text-secondary">{{ user.phone or '—' }}</td>
+            <td>
+              {% for r in user.roles %}
+                <span class="badge text-bg-{{ 'primary' if r.role_name == 'Admin' else 'secondary' }} me-1">{{ r.role_name }}</span>
+              {% endfor %}
+            </td>
+            <td>{{ m.bool_badge(user.is_active, 'Active', 'Deactivated') }}</td>
+            <td class="font-monospace">{{ user.orders.count() }}</td>
+            <td class="small text-secondary">{{ user.created_at.strftime('%b %d, %Y') if user.created_at else '—' }}</td>
+            <td class="text-end text-nowrap">
+              <a href="{{ url_for('admin.user_detail', user_id=user.user_id) }}"
+                 class="btn btn-outline-secondary btn-sm" title="View"
+                 aria-label="View {{ user.name }}"><i class="bi bi-eye"></i></a>
+
+              <a href="{{ url_for('admin.edit_user', user_id=user.user_id) }}"
+                 class="btn btn-outline-secondary btn-sm" title="Edit"
+                 aria-label="Edit {{ user.name }}"><i class="bi bi-pencil"></i></a>
+
+              <form action="{{ url_for('admin.toggle_admin', user_id=user.user_id) }}"
+                    method="post" class="d-inline">
+                <button type="submit" {{ 'disabled' if is_self }}
+                        class="btn btn-outline-{{ 'danger' if user.has_role('Admin') else 'secondary' }} btn-sm"
+                        title="{{ 'Remove admin' if user.has_role('Admin') else 'Make admin' }}"
+                        aria-label="{{ 'Remove admin' if user.has_role('Admin') else 'Make admin' }} for {{ user.name }}">
+                  <i class="bi bi-{{ 'shield-fill-minus' if user.has_role('Admin') else 'shield-plus' }}"></i>
+                </button>
+              </form>
+
+              <form action="{{ url_for('admin.toggle_user_active', user_id=user.user_id) }}"
+                    method="post" class="d-inline">
+                <button type="submit" {{ 'disabled' if is_self }}
+                        class="btn btn-outline-{{ 'warning' if user.is_active else 'success' }} btn-sm"
+                        title="{{ 'Deactivate' if user.is_active else 'Reactivate' }}"
+                        aria-label="{{ 'Deactivate' if user.is_active else 'Reactivate' }} {{ user.name }}">
+                  <i class="bi bi-{{ 'person-slash' if user.is_active else 'person-check' }}"></i>
+                </button>
+              </form>
+
+              {% if not is_self and user.orders.count() == 0 %}
+                {{ m.delete_button(url_for('admin.delete_user', user_id=user.user_id),
+                                   'del-user-' ~ user.user_id, user.name,
+                                   'Their cart, wishlist and reviews go with them.') }}
+              {% endif %}
+            </td>
+          </tr>
           {% endfor %}
-        </td>
-        <td style="font-size:.8rem; color:var(--c-muted);">
-          {{ user.created_at.strftime('%b %d, %Y') }}
-        </td>
-        <td>
-          <form action="{{ url_for('admin.toggle_admin', user_id=user.user_id) }}"
-                method="post" class="d-inline">
-            <button class="btn btn-ghost btn-sm"
-                    style="color:{% if user.has_role('Admin') %}var(--c-danger){% else %}var(--c-muted){% endif %};"
-                    title="{{ 'Remove Admin' if user.has_role('Admin') else 'Make Admin' }}">
-              <i class="bi bi-{% if user.has_role('Admin') %}shield-fill-minus{% else %}shield-plus{% endif %}"></i>
-            </button>
-          </form>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+      <div class="text-center text-secondary p-5">
+        <i class="bi bi-people fs-1 d-block mb-3 opacity-50" aria-hidden="true"></i>
+        <p class="mb-0">{% if q or role or status %}No customers match those filters.{% else %}No customers yet.{% endif %}</p>
+      </div>
+    {% endif %}
+  </div>
 </div>
 {% endblock %}

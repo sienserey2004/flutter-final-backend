@@ -1,0 +1,70 @@
+{% extends "admin/base_admin.html" %}
+{% import "admin/_macros.html" as m %}
+{% block title %}Routine Kits{% endblock %}
+
+{% block admin_content %}
+<div class="card" data-table-wrap>
+  <div class="card-header">
+    <h3 class="card-title">Routine Kits <span class="text-secondary fs-6">({{ bundles|length }})</span></h3>
+    <div class="card-tools d-flex gap-2">
+      {{ m.table_search('bundles-table', 'Filter kits…') }}
+      <a href="{{ url_for('admin.new_bundle') }}" class="btn btn-primary btn-sm">
+        <i class="bi bi-plus-lg me-1"></i>New Kit
+      </a>
+    </div>
+  </div>
+  <div class="card-body p-0">
+    {% if bundles %}
+    <table class="table table-hover mb-0" id="bundles-table">
+      <thead>
+        <tr><th data-sort>ID</th><th data-sort>Kit</th><th data-sort>Products</th><th data-sort>Kit price</th>
+            <th data-sort>Sum of parts</th><th data-sort>Saving</th><th data-sort>Stock</th><th data-sort>Status</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for b in bundles %}
+        <tr>
+          <td class="font-monospace text-secondary">{{ b.bundle_id }}</td>
+          <td>
+            <span class="fw-semibold">{{ b.name }}</span>
+            <div class="font-monospace small text-secondary">{{ b.slug }}</div>
+          </td>
+          <td class="font-monospace">{{ b.items.count() }}</td>
+          <td class="font-monospace">${{ "%.2f"|format(b.price|float) }}</td>
+          <td class="font-monospace text-secondary">${{ "%.2f"|format(b.items_total()) }}</td>
+          <td class="font-monospace">
+            {% if b.savings() > 0 %}
+              <span class="text-success fw-semibold">${{ "%.2f"|format(b.savings()) }}</span>
+            {% else %}
+              <span class="text-secondary">none</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if b.in_stock() %}
+              <span class="badge text-bg-success">In stock</span>
+            {% else %}
+              <span class="badge text-bg-danger">Incomplete</span>
+            {% endif %}
+          </td>
+          <td>{{ m.bool_badge(b.is_active, 'Live', 'Hidden') }}</td>
+          <td>
+            <div class="d-flex gap-1">
+              <a href="{{ url_for('admin.edit_bundle', bundle_id=b.bundle_id) }}" class="btn btn-outline-primary btn-sm">Edit</a>
+              <a href="{{ url_for('products.bundle_detail', slug=b.slug) }}" class="btn btn-outline-secondary btn-sm" target="_blank">View</a>
+              {{ m.delete_button(url_for('admin.delete_bundle', bundle_id=b.bundle_id), 'bundle-' ~ b.bundle_id, b.name) }}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+      <div class="text-center text-secondary p-5">
+        <i class="bi bi-gift fs-1 d-block mb-3 opacity-50"></i>
+        <p>No kits yet. Bundling a full routine at a discount raises average order value more than any single-product promotion.</p>
+        <a href="{{ url_for('admin.new_bundle') }}" class="btn btn-primary btn-sm">Create the first kit</a>
+      </div>
+    {% endif %}
+    <p class="admin-table-empty text-center text-secondary p-4 mb-0" hidden>No rows match your filter.</p>
+  </div>
+</div>
+{% endblock %}

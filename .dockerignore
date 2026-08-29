@@ -1,0 +1,13 @@
+.venv
+.git
+.gitignore
+__pycache__
+**/__pycache__
+*.pyc
+.env
+instance
+Dockerfile
+docker-compose.yml
+.dockerignore
+README.md
+BAKONG_PAYMENT_GUIDE.md

@@ -1,0 +1,67 @@
+{% extends "admin/base_admin.html" %}
+{% import "admin/_macros.html" as m %}
+{% block title %}Subscriptions{% endblock %}
+
+{% block admin_content %}
+{% if due %}
+<div class="alert alert-warning">
+  <strong><i class="bi bi-calendar-event me-1"></i>{{ due|length }} refill(s) due within 7 days</strong>
+  <div class="small mt-1">
+    Creating the repeat orders needs a scheduled job, so nothing bills automatically today — place these
+    manually or reach out to the customer until that's wired up.
+  </div>
+</div>
+{% endif %}
+
+<div class="card" data-table-wrap>
+  <div class="card-header">
+    <h3 class="card-title">Subscriptions <span class="text-secondary fs-6">({{ subscriptions|length }})</span></h3>
+    <div class="card-tools">{{ m.table_search('subscriptions-table', 'Filter subscriptions…') }}</div>
+  </div>
+
+  <div class="card-body p-0">
+    {% if subscriptions %}
+    <table class="table table-hover mb-0" id="subscriptions-table">
+      <thead>
+        <tr>
+          <th data-sort>#</th><th data-sort>Customer</th><th data-sort>Product</th><th data-sort>Variant</th>
+          <th data-sort>Qty</th><th data-sort>Cadence</th><th data-sort>Unit price</th>
+          <th data-sort>Next delivery</th><th data-sort>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in subscriptions %}
+        <tr>
+          <td class="font-monospace">{{ s.subscription_id }}</td>
+          <td>
+            <div>{{ s.user.name }}</div>
+            <div class="small text-secondary">{{ s.user.email }}</div>
+          </td>
+          <td class="fw-semibold">{{ s.variant.product.name }}</td>
+          <td class="small text-secondary">{{ s.variant.label() }}</td>
+          <td class="font-monospace">{{ s.quantity }}</td>
+          <td class="small">{{ s.interval_label() }}</td>
+          <td class="font-monospace">
+            ${{ "%.2f"|format(s.unit_price()) }}
+            {% if s.discount_percent|float > 0 %}
+              <span class="badge text-bg-success">−{{ s.discount_percent|int }}%</span>
+            {% endif %}
+          </td>
+          <td class="font-monospace small {% if s in due %}text-warning fw-bold{% endif %}">
+            {% if s.next_delivery_at %}{{ s.next_delivery_at.strftime('%b %d, %Y') }}{% else %}—{% endif %}
+          </td>
+          <td>{{ m.status_badge(s.status) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+      <div class="text-center text-secondary p-5">
+        <i class="bi bi-arrow-repeat fs-1 d-block mb-3 opacity-50"></i>
+        <p class="mb-0">No subscriptions yet. Customers can start one from any product page.</p>
+      </div>
+    {% endif %}
+    <p class="admin-table-empty text-center text-secondary p-4 mb-0" hidden>No rows match your filter.</p>
+  </div>
+</div>
+{% endblock %}

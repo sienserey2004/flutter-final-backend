@@ -1,0 +1,57 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}{{ 'Edit' if brand else 'New' }} Brand{% endblock %}
+
+{% block admin_content %}
+<div class="d-flex align-items-center gap-2 mb-3">
+  <a href="{{ url_for('admin.brands') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i></a>
+  <h3 class="mb-0">{{ 'Edit' if brand else 'New' }} Brand</h3>
+</div>
+
+<div class="row">
+  <div class="col-12 col-lg-7 col-xl-6">
+    <div class="card">
+      <div class="card-body">
+        <form method="post">
+          <div class="row g-3">
+            <div class="col-12 col-sm-7">
+              <label class="form-label" for="name">Brand name</label>
+              <input type="text" class="form-control" id="name" name="name"
+                     value="{{ brand.name if brand else '' }}" required autofocus>
+            </div>
+            <div class="col-12 col-sm-5">
+              <label class="form-label" for="country">Country of origin</label>
+              <input type="text" class="form-control" id="country" name="country"
+                     value="{{ brand.country or '' if brand else '' }}" placeholder="South Korea">
+            </div>
+            <div class="col-12">
+              <label class="form-label" for="logo">Logo URL</label>
+              <input type="text" class="form-control" id="logo" name="logo"
+                     value="{{ brand.logo or '' if brand else '' }}" placeholder="https://… or images/brands/foo.png">
+            </div>
+            <div class="col-12">
+              <label class="form-label" for="description">Description</label>
+              <textarea class="form-control" id="description" name="description" rows="3">{{ brand.description or '' if brand else '' }}</textarea>
+            </div>
+            <div class="col-12">
+              <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" role="switch" id="is_active" name="is_active" value="1"
+                       {% if not brand or brand.is_active %}checked{% endif %}>
+                <label class="form-check-label" for="is_active">Visible in the storefront</label>
+              </div>
+            </div>
+            {% if brand %}
+              <div class="col-12">
+                <div class="font-monospace text-secondary small">Slug: {{ brand.slug }} · {{ brand.products.count() }} product(s)</div>
+              </div>
+            {% endif %}
+            <div class="col-12 d-flex gap-2 mt-2">
+              <button type="submit" class="btn btn-primary">{{ 'Update' if brand else 'Create' }} Brand</button>
+              <a href="{{ url_for('admin.brands') }}" class="btn btn-outline-secondary">Cancel</a>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

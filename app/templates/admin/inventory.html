@@ -1,69 +1,134 @@
 {% extends "admin/base_admin.html" %}
+{% import "admin/_macros.html" as m %}
 {% block title %}Inventory — Admin{% endblock %}
 
 {% block admin_content %}
-<div class="d-flex align-items-center justify-content-between mb-4">
-  <div>
-    <p class="section-title mb-0">Admin</p>
-    <h2 class="mb-0">Inventory Log</h2>
-  </div>
-  <span class="text-mono" style="font-size:.8rem; color:var(--c-muted);">Last 200 entries</span>
+<div class="mb-4">
+  <h3 class="mb-0">Stock &amp; expiry</h3>
 </div>
 
-<div class="card">
-  {% if logs %}
-  <table class="table-min">
-    <thead>
-      <tr>
-        <th>Date</th>
-        <th>Product</th>
-        <th>Variant</th>
-        <th>Type</th>
-        <th>Qty</th>
-        <th>Stock Now</th>
-        <th>Reference</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for log in logs %}
-      <tr>
-        <td style="font-size:.78rem; color:var(--c-muted); white-space:nowrap;">
-          {{ log.created_at.strftime('%b %d %H:%M') }}
-        </td>
-        <td style="font-weight:500; font-size:.875rem;">
-          {{ log.variant.product.name }}
-        </td>
-        <td style="font-size:.78rem; color:var(--c-muted);">
-          {% if log.variant.size %}{{ log.variant.size }}{% endif %}
-          {% if log.variant.color %} / {{ log.variant.color }}{% endif %}
-        </td>
-        <td>
-          {% if log.change_type == 'IN' %}
-            <span class="badge badge-success">IN</span>
-          {% elif log.change_type == 'OUT' %}
-            <span class="badge badge-danger">OUT</span>
-          {% else %}
-            <span class="badge badge-warning">ADJ</span>
-          {% endif %}
-        </td>
-        <td class="text-mono">
-          <span style="color:{% if log.change_type=='IN' %}var(--c-success){% elif log.change_type=='OUT' %}var(--c-danger){% else %}var(--c-warning){% endif %};">
-            {% if log.change_type == 'IN' %}+{% elif log.change_type == 'OUT' %}−{% endif %}{{ log.quantity }}
-          </span>
-        </td>
-        <td class="text-mono">{{ log.variant.stock }}</td>
-        <td style="font-size:.78rem; color:var(--c-muted);">
-          {{ log.reference or '—' }}
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% else %}
-    <div class="empty-state">
-      <div class="icon"><i class="bi bi-list-check"></i></div>
-      <p>No inventory records yet.</p>
+<div class="row g-4 mb-4">
+  <!-- Low stock -->
+  <div class="col-12 col-xl-6">
+    <div class="card h-100" data-table-wrap>
+      <div class="card-header">
+        <h3 class="card-title">Low stock <span class="text-secondary fs-6">(≤ {{ threshold }} units)</span></h3>
+        <div class="card-tools">
+          {{ m.table_search('low-stock-table', 'Filter…') }}
+        </div>
+      </div>
+      <div class="card-body p-0">
+        {% if low_stock %}
+        <table class="table table-hover mb-0" id="low-stock-table">
+          <thead><tr><th data-sort>Product</th><th data-sort>Variant</th><th data-sort>SKU</th><th data-sort>Stock</th><th></th></tr></thead>
+          <tbody>
+            {% for v in low_stock %}
+            <tr>
+              <td><a href="{{ url_for('admin.variants', product_id=v.product_id) }}" class="fw-semibold">{{ v.product.name }}</a></td>
+              <td class="small text-secondary">{{ v.label() }}</td>
+              <td class="font-monospace small">{{ v.sku or '—' }}</td>
+              <td class="font-monospace">
+                <span class="{% if v.stock == 0 %}text-danger fw-bold{% else %}text-warning fw-bold{% endif %}">{{ v.stock }}</span>
+              </td>
+              <td><a href="{{ url_for('admin.edit_variant', variant_id=v.variant_id) }}" class="btn btn-outline-primary btn-sm">Restock</a></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+          <div class="text-center text-secondary p-5">
+            <i class="bi bi-check-circle fs-1 d-block mb-3 opacity-50"></i>
+            <p class="mb-0">Nothing running low.</p>
+          </div>
+        {% endif %}
+        <p class="admin-table-empty text-center text-secondary p-4 mb-0" hidden>No rows match your filter.</p>
+      </div>
     </div>
-  {% endif %}
+  </div>
+
+  <!-- Expiring -->
+  <div class="col-12 col-xl-6">
+    <div class="card h-100" data-table-wrap>
+      <div class="card-header">
+        <h3 class="card-title">Expiring <span class="text-secondary fs-6">(within {{ expiry_days }} days)</span></h3>
+        <div class="card-tools">
+          {{ m.table_search('expiring-table', 'Filter…') }}
+        </div>
+      </div>
+      <div class="card-body p-0">
+        {% if expiring %}
+        <table class="table table-hover mb-0" id="expiring-table">
+          <thead><tr><th data-sort>Product</th><th data-sort>Variant</th><th data-sort>Batch</th><th data-sort>Expires</th><th data-sort>Stock</th></tr></thead>
+          <tbody>
+            {% for v in expiring %}
+            <tr>
+              <td><a href="{{ url_for('admin.variants', product_id=v.product_id) }}" class="fw-semibold">{{ v.product.name }}</a></td>
+              <td class="small text-secondary">{{ v.label() }}</td>
+              <td class="font-monospace small">{{ v.batch_no or '—' }}</td>
+              <td class="font-monospace small">
+                {% set days = v.days_until_expiry() %}
+                <span class="{% if days is not none and days < 0 %}text-danger fw-bold{% else %}text-warning fw-bold{% endif %}">
+                  {{ v.expiry_date.strftime('%b %Y') }}
+                  {% if days is not none %}
+                    <span class="small">({{ days }}d{{ ' overdue' if days < 0 else '' }})</span>
+                  {% endif %}
+                </span>
+              </td>
+              <td class="font-monospace">{{ v.stock }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+          <div class="text-center text-secondary p-5">
+            <i class="bi bi-calendar-check fs-1 d-block mb-3 opacity-50"></i>
+            <p class="mb-0">No stock nearing its expiry date.</p>
+          </div>
+        {% endif %}
+        <p class="admin-table-empty text-center text-secondary p-4 mb-0" hidden>No rows match your filter.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Movement log -->
+<div class="card" data-table-wrap>
+  <div class="card-header">
+    <h3 class="card-title">Stock movements <span class="text-secondary fs-6">(last 200 entries)</span></h3>
+    <div class="card-tools">
+      {{ m.table_search('stock-log-table', 'Filter movements…') }}
+    </div>
+  </div>
+  <div class="card-body p-0">
+    {% if logs %}
+    <table class="table table-hover mb-0" id="stock-log-table">
+      <thead>
+        <tr><th data-sort>Date</th><th data-sort>Product</th><th data-sort>Variant</th><th data-sort>Type</th><th data-sort>Qty</th><th>Reference</th></tr>
+      </thead>
+      <tbody>
+        {% for log in logs %}
+        <tr>
+          <td class="font-monospace small text-secondary">{{ log.created_at.strftime('%b %d, %H:%M') }}</td>
+          <td>{{ log.variant.product.name if log.variant else '—' }}</td>
+          <td class="small text-secondary">{{ log.variant.label() if log.variant else '—' }}</td>
+          <td>
+            <span class="badge text-bg-{{ 'success' if log.change_type == 'IN' else 'danger' if log.change_type == 'OUT' else 'secondary' }}">
+              {{ log.change_type }}
+            </span>
+          </td>
+          <td class="font-monospace">{{ log.quantity }}</td>
+          <td class="small text-secondary">{{ log.reference or '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+      <div class="text-center text-secondary p-5">
+        <i class="bi bi-list-check fs-1 d-block mb-3 opacity-50"></i>
+        <p class="mb-0">No stock movements recorded.</p>
+      </div>
+    {% endif %}
+    <p class="admin-table-empty text-center text-secondary p-4 mb-0" hidden>No rows match your filter.</p>
+  </div>
 </div>
 {% endblock %}

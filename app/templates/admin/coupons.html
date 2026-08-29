@@ -1,77 +1,60 @@
 {% extends "admin/base_admin.html" %}
+{% import "admin/_macros.html" as m %}
 {% block title %}Coupons — Admin{% endblock %}
 
 {% block admin_content %}
-<div class="d-flex align-items-center justify-content-between mb-4">
-  <div>
-    <p class="section-title mb-0">Admin</p>
-    <h2 class="mb-0">Coupons</h2>
-  </div>
-  <a href="{{ url_for('admin.new_coupon') }}" class="btn btn-primary btn-sm">
-    <i class="bi bi-plus me-1"></i> New Coupon
-  </a>
-</div>
-
-<div class="card">
-  {% if coupons %}
-  <table class="table-min">
-    <thead>
-      <tr>
-        <th>Code</th>
-        <th>Type</th>
-        <th>Value</th>
-        <th>Min Amount</th>
-        <th>Expiry</th>
-        <th>Status</th>
-        <th></th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for c in coupons %}
-      <tr>
-        <td>
-          <span class="kbd">{{ c.code }}</span>
-        </td>
-        <td style="font-size:.85rem; color:var(--c-muted);">{{ c.discount_type }}</td>
-        <td class="text-mono">
-          {% if c.discount_type == 'percentage' %}
-            {{ c.discount_value }}%
-          {% else %}
-            ${{ "%.2f"|format(c.discount_value|float) }}
-          {% endif %}
-        </td>
-        <td class="text-mono">
-          {% if c.min_amount and c.min_amount > 0 %}
-            ${{ "%.2f"|format(c.min_amount|float) }}
-          {% else %}—{% endif %}
-        </td>
-        <td style="font-size:.8rem; color:var(--c-muted);">
-          {% if c.expiry_date %}{{ c.expiry_date.strftime('%b %d, %Y') }}{% else %}No expiry{% endif %}
-        </td>
-        <td>
-          {% if c.is_valid() %}
-            <span class="badge badge-success">Active</span>
-          {% else %}
-            <span class="badge badge-danger">Expired</span>
-          {% endif %}
-        </td>
-        <td>
-          <form action="{{ url_for('admin.delete_coupon', coupon_id=c.coupon_id) }}"
-                method="post" onsubmit="return confirm('Delete coupon {{ c.code }}?')">
-            <button class="btn btn-danger-outline btn-sm" type="submit">
-              <i class="bi bi-trash"></i>
-            </button>
-          </form>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% else %}
-    <div class="empty-state">
-      <div class="icon"><i class="bi bi-ticket-perforated"></i></div>
-      <p>No coupons yet.</p>
+<div class="card" data-table-wrap>
+  <div class="card-header">
+    <h3 class="card-title">Coupons <span class="text-secondary fs-6">({{ coupons|length }})</span></h3>
+    <div class="card-tools d-flex gap-2">
+      {{ m.table_search('coupons-table', 'Filter coupons…') }}
+      <a href="{{ url_for('admin.new_coupon') }}" class="btn btn-primary btn-sm">
+        <i class="bi bi-plus-lg me-1"></i>New Coupon
+      </a>
     </div>
-  {% endif %}
+  </div>
+  <div class="card-body p-0">
+    {% if coupons %}
+    <table class="table table-hover mb-0" id="coupons-table">
+      <thead>
+        <tr><th data-sort>Code</th><th data-sort>Type</th><th data-sort>Value</th><th data-sort>Min Amount</th>
+            <th data-sort>Expiry</th><th data-sort>Status</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for c in coupons %}
+        <tr>
+          <td class="font-monospace fw-semibold">{{ c.code }}</td>
+          <td class="small text-secondary">{{ c.discount_type }}</td>
+          <td class="font-monospace">
+            {% if c.discount_type == 'percentage' %}
+              {{ c.discount_value }}%
+            {% else %}
+              ${{ "%.2f"|format(c.discount_value|float) }}
+            {% endif %}
+          </td>
+          <td class="font-monospace">
+            {% if c.min_amount and c.min_amount > 0 %}
+              ${{ "%.2f"|format(c.min_amount|float) }}
+            {% else %}—{% endif %}
+          </td>
+          <td class="small text-secondary">
+            {% if c.expiry_date %}{{ c.expiry_date.strftime('%b %d, %Y') }}{% else %}No expiry{% endif %}
+          </td>
+          <td>{{ m.bool_badge(c.is_valid(), 'Valid', 'Expired') }}</td>
+          <td>
+            {{ m.delete_button(url_for('admin.delete_coupon', coupon_id=c.coupon_id), 'coupon-' ~ c.coupon_id, c.code) }}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+      <div class="text-center text-secondary p-5">
+        <i class="bi bi-ticket-perforated fs-1 d-block mb-3 opacity-50"></i>
+        <p class="mb-0">No coupons yet.</p>
+      </div>
+    {% endif %}
+    <p class="admin-table-empty text-center text-secondary p-4 mb-0" hidden>No rows match your filter.</p>
+  </div>
 </div>
 {% endblock %}

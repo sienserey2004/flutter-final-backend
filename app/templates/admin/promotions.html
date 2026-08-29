@@ -1,67 +1,48 @@
 {% extends "admin/base_admin.html" %}
+{% import "admin/_macros.html" as m %}
 {% block title %}Promotions — Admin{% endblock %}
 
 {% block admin_content %}
-<div class="d-flex align-items-center justify-content-between mb-4">
-  <div>
-    <p class="section-title mb-0">Admin</p>
-    <h2 class="mb-0">Promotions</h2>
-  </div>
-  <a href="{{ url_for('admin.new_promotion') }}" class="btn btn-primary btn-sm">
-    <i class="bi bi-plus me-1"></i> New Promotion
-  </a>
-</div>
-
-<div class="card">
-  {% if promotions %}
-  <table class="table-min">
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Discount</th>
-        <th>Start</th>
-        <th>End</th>
-        <th>Products</th>
-        <th>Status</th>
-        <th></th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for p in promotions %}
-      <tr>
-        <td style="font-weight:500;">{{ p.name }}</td>
-        <td class="text-mono">{{ p.discount_percent }}%</td>
-        <td style="font-size:.8rem; color:var(--c-muted);">
-          {{ p.start_date.strftime('%b %d, %Y') }}
-        </td>
-        <td style="font-size:.8rem; color:var(--c-muted);">
-          {{ p.end_date.strftime('%b %d, %Y') }}
-        </td>
-        <td class="text-mono">{{ p.products|length }}</td>
-        <td>
-          {% if p.is_active() %}
-            <span class="badge badge-success">Active</span>
-          {% else %}
-            <span class="badge badge-neutral">Inactive</span>
-          {% endif %}
-        </td>
-        <td>
-          <form action="{{ url_for('admin.delete_promotion', promo_id=p.promotion_id) }}"
-                method="post" onsubmit="return confirm('Delete this promotion?')">
-            <button class="btn btn-danger-outline btn-sm" type="submit">
-              <i class="bi bi-trash"></i>
-            </button>
-          </form>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% else %}
-    <div class="empty-state">
-      <div class="icon"><i class="bi bi-megaphone"></i></div>
-      <p>No promotions yet.</p>
+<div class="card" data-table-wrap>
+  <div class="card-header">
+    <h3 class="card-title">Promotions <span class="text-secondary fs-6">({{ promotions|length }})</span></h3>
+    <div class="card-tools d-flex gap-2">
+      {{ m.table_search('promotions-table', 'Filter promotions…') }}
+      <a href="{{ url_for('admin.new_promotion') }}" class="btn btn-primary btn-sm">
+        <i class="bi bi-plus-lg me-1"></i>New Promotion
+      </a>
     </div>
-  {% endif %}
+  </div>
+  <div class="card-body p-0">
+    {% if promotions %}
+    <table class="table table-hover mb-0" id="promotions-table">
+      <thead>
+        <tr><th data-sort>Name</th><th data-sort>Discount</th><th data-sort>Start</th><th data-sort>End</th>
+            <th data-sort>Products</th><th data-sort>Status</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for p in promotions %}
+        <tr>
+          <td class="fw-semibold">{{ p.name }}</td>
+          <td class="font-monospace">{{ p.discount_percent }}%</td>
+          <td class="small text-secondary">{{ p.start_date.strftime('%b %d, %Y') }}</td>
+          <td class="small text-secondary">{{ p.end_date.strftime('%b %d, %Y') }}</td>
+          <td class="font-monospace">{{ p.products|length }}</td>
+          <td>{{ m.bool_badge(p.is_active(), 'Active', 'Inactive') }}</td>
+          <td>
+            {{ m.delete_button(url_for('admin.delete_promotion', promo_id=p.promotion_id), 'promotion-' ~ p.promotion_id, p.name) }}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+      <div class="text-center text-secondary p-5">
+        <i class="bi bi-megaphone fs-1 d-block mb-3 opacity-50"></i>
+        <p class="mb-0">No promotions yet.</p>
+      </div>
+    {% endif %}
+    <p class="admin-table-empty text-center text-secondary p-4 mb-0" hidden>No rows match your filter.</p>
+  </div>
 </div>
 {% endblock %}

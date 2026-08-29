@@ -1,0 +1,19 @@
+{# Shared account sub-navigation. #}
+<div class="d-flex flex-wrap gap-2 mb-4">
+  {% set links = [
+    ('account.overview',      'Overview',      'bi-grid-1x2'),
+    ('account.skin_profile',  'Skin Profile',  'bi-droplet'),
+    ('orders.my_orders',      'Orders',        'bi-receipt'),
+    ('account.wishlist',      'Wishlist',      'bi-heart'),
+    ('account.subscriptions', 'Subscriptions', 'bi-arrow-repeat'),
+    ('account.addresses',     'Addresses',     'bi-geo-alt'),
+    ('account.alerts',        'Stock Alerts',  'bi-bell'),
+    ('account.returns',       'Returns',       'bi-arrow-return-left'),
+  ] %}
+  {% for endpoint, label, icon in links %}
+    <a href="{{ url_for(endpoint) }}"
+       class="filter-chip {% if request.endpoint == endpoint %}active{% endif %}">
+      <i class="bi {{ icon }} me-1"></i>{{ label }}
+    </a>
+  {% endfor %}
+</div>

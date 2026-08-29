@@ -1,0 +1,59 @@
+{% extends "admin/base_admin.html" %}
+{% import "admin/_macros.html" as m %}
+{% block title %}Returns{% endblock %}
+
+{% block admin_content %}
+<div class="card" data-table-wrap>
+  <div class="card-header">
+    <h3 class="card-title">Returns <span class="text-secondary fs-6">({{ returns|length }})</span></h3>
+    <div class="card-tools">{{ m.table_search('returns-table', 'Filter returns…') }}</div>
+  </div>
+
+  <div class="card-body border-bottom d-flex gap-2 flex-wrap">
+    <a href="{{ url_for('admin.returns') }}"
+       class="btn btn-sm {% if not current_status %}btn-primary{% else %}btn-outline-secondary{% endif %}">All</a>
+    {% for s in statuses %}
+      <a href="{{ url_for('admin.returns', status=s) }}"
+         class="btn btn-sm {% if current_status==s %}btn-primary{% else %}btn-outline-secondary{% endif %}">{{ s }}</a>
+    {% endfor %}
+  </div>
+
+  <div class="card-body p-0">
+    {% if returns %}
+    <table class="table table-hover mb-0" id="returns-table">
+      <thead>
+        <tr>
+          <th data-sort>#</th><th data-sort>Order</th><th data-sort>Customer</th><th data-sort>Reason</th>
+          <th data-sort>Items</th><th data-sort>Refund</th><th data-sort>Requested</th><th data-sort>Status</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in returns %}
+        <tr>
+          <td class="font-monospace">{{ r.return_id }}</td>
+          <td><a href="{{ url_for('admin.order_detail', order_id=r.order_id) }}" class="font-monospace">#{{ r.order_id }}</a></td>
+          <td>{{ r.user.name if r.user else '—' }}</td>
+          <td class="small">
+            {% if 'reaction' in (r.reason or '')|lower %}
+              <i class="bi bi-exclamation-triangle-fill text-danger me-1" title="Possible skin reaction"></i>
+            {% endif %}{{ r.reason }}
+          </td>
+          <td class="font-monospace">{{ r.items.count() }}</td>
+          <td class="font-monospace">{% if r.refund_amount is not none %}${{ "%.2f"|format(r.refund_amount|float) }}{% else %}—{% endif %}</td>
+          <td class="small text-secondary">{{ r.created_at.strftime('%b %d, %Y') }}</td>
+          <td>{{ m.status_badge(r.status) }}</td>
+          <td><a href="{{ url_for('admin.return_detail', return_id=r.return_id) }}" class="btn btn-outline-secondary btn-sm">Review</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+      <div class="text-center text-secondary p-5">
+        <i class="bi bi-arrow-return-left fs-1 d-block mb-3 opacity-50"></i>
+        <p class="mb-0">{% if current_status %}No {{ current_status }} returns.{% else %}No returns found.{% endif %}</p>
+      </div>
+    {% endif %}
+    <p class="admin-table-empty text-center text-secondary p-4 mb-0" hidden>No rows match your filter.</p>
+  </div>
+</div>
+{% endblock %}

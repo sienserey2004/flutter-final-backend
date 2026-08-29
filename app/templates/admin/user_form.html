@@ -1,0 +1,99 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}{{ 'Edit ' ~ user.name if user else 'New Customer' }} — Admin{% endblock %}
+
+{% block admin_content %}
+<div class="d-flex align-items-center gap-3 mb-4">
+  <a href="{{ url_for('admin.user_detail', user_id=user.user_id) if user else url_for('admin.users') }}"
+     class="btn btn-outline-secondary btn-sm" aria-label="Back"><i class="bi bi-arrow-left"></i></a>
+  <h3 class="mb-0">{{ 'Edit Customer' if user else 'New Customer' }}</h3>
+</div>
+
+<div class="row">
+  <div class="col-12 col-lg-7">
+    <div class="card">
+      <div class="card-body">
+        <form method="post"
+              action="{{ url_for('admin.edit_user', user_id=user.user_id) if user else url_for('admin.new_user') }}">
+
+          <div class="mb-3">
+            <label for="name" class="form-label">Name <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="name" name="name" required
+                   value="{{ user.name if user else (name or '') }}">
+          </div>
+
+          <div class="mb-3">
+            <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
+            <input type="email" class="form-control" id="email" name="email" required
+                   value="{{ user.email if user else (email or '') }}">
+          </div>
+
+          <div class="mb-3">
+            <label for="phone" class="form-label">Phone</label>
+            <input type="tel" class="form-control" id="phone" name="phone"
+                   value="{{ user.phone if user else (phone or '') }}">
+          </div>
+
+          <div class="mb-3">
+            <label for="password" class="form-label">
+              Password {% if user %}<span class="text-secondary fw-normal">— leave blank to keep the current one</span>
+              {% else %}<span class="text-danger">*</span>{% endif %}
+            </label>
+            <input type="password" class="form-control" id="password" name="password"
+                   minlength="6" {{ 'required' if not user }}
+                   autocomplete="new-password"
+                   placeholder="{{ 'Unchanged' if user else 'At least 6 characters' }}">
+          </div>
+
+          {% if not user %}
+          <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" id="is_admin" name="is_admin"
+                   {{ 'checked' if is_admin }}>
+            <label class="form-check-label" for="is_admin">
+              Grant admin access
+              <span class="d-block small text-secondary">Full access to this panel, including other customers' data.</span>
+            </label>
+          </div>
+          {% endif %}
+
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-check-lg me-1" aria-hidden="true"></i>{{ 'Save changes' if user else 'Create customer' }}
+            </button>
+            <a href="{{ url_for('admin.user_detail', user_id=user.user_id) if user else url_for('admin.users') }}"
+               class="btn btn-outline-secondary">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  {% if user %}
+  <div class="col-12 col-lg-5">
+    <div class="card">
+      <div class="card-header"><h3 class="card-title">Account</h3></div>
+      <div class="card-body small">
+        <dl class="row mb-0">
+          <dt class="col-5 text-secondary">Status</dt>
+          <dd class="col-7">
+            <span class="badge text-bg-{{ 'success' if user.is_active else 'secondary' }}">
+              {{ 'Active' if user.is_active else 'Deactivated' }}
+            </span>
+          </dd>
+          <dt class="col-5 text-secondary">Roles</dt>
+          <dd class="col-7">
+            {% for r in user.roles %}<span class="badge text-bg-secondary me-1">{{ r.role_name }}</span>{% endfor %}
+          </dd>
+          <dt class="col-5 text-secondary">Orders</dt><dd class="col-7 font-monospace">{{ user.orders.count() }}</dd>
+          <dt class="col-5 text-secondary">Joined</dt>
+          <dd class="col-7">{{ user.created_at.strftime('%b %d, %Y') if user.created_at else '—' }}</dd>
+        </dl>
+        <p class="text-secondary mt-3 mb-0">
+          Roles and account status are changed from the
+          <a href="{{ url_for('admin.user_detail', user_id=user.user_id) }}">customer page</a>.
+        </p>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

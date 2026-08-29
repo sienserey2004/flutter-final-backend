@@ -1,78 +1,52 @@
-{% extends "admin/base_admin.html" %} {% block title %}Bakong Merchants —
-Admin{% endblock %} {% block admin_content %}
-<div class="d-flex align-items-center justify-content-between mb-4">
-  <div>
-    <p class="section-title mb-0">Admin</p>
-    <h2 class="mb-0">Bakong Merchants</h2>
-  </div>
-  <a
-    href="{{ url_for('admin.new_bakong_merchant') }}"
-    class="btn btn-primary btn-sm"
-  >
-    <i class="bi bi-plus me-1"></i> New Merchant
-  </a>
-</div>
+{% extends "admin/base_admin.html" %}
+{% import "admin/_macros.html" as m %}
+{% block title %}Bakong Merchants{% endblock %}
 
-<div class="card">
-  {% if merchants %}
-  <table class="table-min">
-    <thead>
-      <tr>
-        <th>ID</th>
-        <th>Merchant Name</th>
-        <th>Bank Account</th>
-        <th>City</th>
-        <th>Terminal</th>
-        <th>Status</th>
-        <th></th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for merchant in merchants %}
-      <tr>
-        <td class="text-mono" style="color: var(--c-muted)">
-          {{ merchant.merchant_id }}
-        </td>
-        <td style="font-weight: 500">{{ merchant.merchant_name }}</td>
-        <td class="text-mono">{{ merchant.bank_account }}</td>
-        <td>{{ merchant.merchant_city }}</td>
-        <td>{{ merchant.terminal_label }}</td>
-        <td>
-          {% if merchant.is_active %}
-          <span class="badge badge-success">Active</span>
-          {% else %}
-          <span class="badge badge-neutral">Inactive</span>
-          {% endif %}
-        </td>
-        <td class="d-flex gap-1">
-          <a
-            href="{{ url_for('admin.edit_bakong_merchant', merchant_id=merchant.merchant_id) }}"
-            class="btn btn-outline btn-sm"
-            >Edit</a
-          >
-          <form
-            action="{{ url_for('admin.delete_bakong_merchant', merchant_id=merchant.merchant_id) }}"
-            method="post"
-            onsubmit="return confirm('Delete this merchant?');"
-          >
-            <button class="btn btn-danger-outline btn-sm" type="submit">
-              <i class="bi bi-trash"></i>
-            </button>
-          </form>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% else %}
-  <div class="empty-state">
-    <div class="icon"><i class="bi bi-shop"></i></div>
-    <h4>No merchants yet</h4>
-    <p>Add your first Bakong merchant account.</p>
-    <a href="{{ url_for('admin.new_bakong_merchant') }}" class="btn btn-primary"
-      >Add Merchant</a
-    >
+{% block admin_content %}
+<div class="card" data-table-wrap>
+  <div class="card-header">
+    <h3 class="card-title">Bakong Merchants <span class="text-secondary fs-6">({{ merchants|length }})</span></h3>
+    <div class="card-tools d-flex gap-2">
+      {{ m.table_search('bakong-merchants-table', 'Filter merchants…') }}
+      <a href="{{ url_for('admin.new_bakong_merchant') }}" class="btn btn-primary btn-sm">
+        <i class="bi bi-plus-lg me-1"></i>New Merchant
+      </a>
+    </div>
   </div>
-  {% endif %}
+  <div class="card-body p-0">
+    {% if merchants %}
+    <table class="table table-hover mb-0" id="bakong-merchants-table">
+      <thead>
+        <tr><th data-sort>ID</th><th data-sort>Merchant Name</th><th>Bank Account</th><th data-sort>City</th>
+            <th data-sort>Terminal</th><th data-sort>Status</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for merchant in merchants %}
+        <tr>
+          <td class="font-monospace text-secondary">{{ merchant.merchant_id }}</td>
+          <td class="fw-semibold">{{ merchant.merchant_name }}</td>
+          <td class="font-monospace">{{ merchant.bank_account }}</td>
+          <td>{{ merchant.merchant_city }}</td>
+          <td>{{ merchant.terminal_label }}</td>
+          <td>{{ m.bool_badge(merchant.is_active, 'Active', 'Inactive') }}</td>
+          <td>
+            <div class="d-flex gap-1">
+              <a href="{{ url_for('admin.edit_bakong_merchant', merchant_id=merchant.merchant_id) }}" class="btn btn-outline-primary btn-sm">Edit</a>
+              {{ m.delete_button(url_for('admin.delete_bakong_merchant', merchant_id=merchant.merchant_id), 'merchant-' ~ merchant.merchant_id, merchant.merchant_name) }}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+      <div class="text-center text-secondary p-5">
+        <i class="bi bi-shop fs-1 d-block mb-3 opacity-50"></i>
+        <p>No merchants yet. Add your first Bakong merchant account.</p>
+        <a href="{{ url_for('admin.new_bakong_merchant') }}" class="btn btn-primary btn-sm">Add Merchant</a>
+      </div>
+    {% endif %}
+    <p class="admin-table-empty text-center text-secondary p-4 mb-0" hidden>No rows match your filter.</p>
+  </div>
 </div>
 {% endblock %}

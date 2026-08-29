@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Routine Kits{% endblock %}
+
+{% block content %}
+<div class="page-container">
+
+  <div class="mb-4">
+    <p class="section-title mb-1">Save on a set</p>
+    <h2 style="font-weight:800;margin:0;">Routine kits</h2>
+    <p class="mt-2" style="max-width:640px;">
+      Complete routines built around one goal, priced below buying the pieces
+      separately. Every kit follows the cleanse → treat → moisturise → protect order.
+    </p>
+  </div>
+
+  {% if bundles %}
+    <div class="row row-cols-1 row-cols-md-2 g-4">
+      {% for b in bundles %}
+        <div class="col">
+          <div class="card h-100" style="border-radius:var(--radius-xl);">
+            <div class="row g-0 h-100">
+              <div class="col-5">
+                <div class="product-img h-100" style="aspect-ratio:auto;min-height:100%;">
+                  {% if b.image_absolute() %}
+                    <img src="{{ b.image_absolute() }}" alt="{{ b.name }}" loading="lazy"/>
+                  {% endif %}
+                </div>
+              </div>
+              <div class="col-7">
+                <div class="card-body d-flex flex-column h-100">
+                  <h5 style="font-weight:800;color:var(--c-text);">{{ b.name }}</h5>
+                  <p style="font-size:.85rem;">{{ b.description|truncate(120) }}</p>
+
+                  <ul style="list-style:none;padding:0;margin:0 0 1rem;font-size:.82rem;">
+                    {% for item in b.items %}
+                      <li style="color:var(--c-muted);margin-bottom:.2rem;">
+                        <i class="bi bi-check2 me-1" style="color:var(--c-primary);"></i>
+                        {{ item.variant.product.name }}
+                        {% if item.quantity > 1 %}× {{ item.quantity }}{% endif %}
+                      </li>
+                    {% endfor %}
+                  </ul>
+
+                  <div class="mt-auto">
+                    <div class="d-flex align-items-baseline gap-2 mb-2 flex-wrap">
+                      <span class="product-price" style="font-size:1.3rem;">
+                        ${{ "%.2f"|format(b.price|float) }}
+                      </span>
+                      <span class="price-was">${{ "%.2f"|format(b.items_total()) }}</span>
+                      {% if b.savings() > 0 %}
+                        <span class="badge badge-organic">Save ${{ "%.2f"|format(b.savings()) }}</span>
+                      {% endif %}
+                    </div>
+                    <a href="{{ url_for('products.bundle_detail', slug=b.slug) }}"
+                       class="btn btn-primary w-100">View kit</a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state">
+      <div class="icon">🎁</div>
+      <p>No kits available right now.</p>
+    </div>
+  {% endif %}
+
+</div>
+{% endblock %}

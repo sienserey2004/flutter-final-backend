@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Addresses{% endblock %}
+
+{% block content %}
+<div class="page-container" style="max-width:900px;">
+
+  <div class="d-flex align-items-end justify-content-between mb-4 flex-wrap gap-2">
+    <div>
+      <p class="section-title mb-1">Account</p>
+      <h2 style="font-weight:800;margin:0;">Address book</h2>
+    </div>
+    <a href="{{ url_for('account.new_address') }}" class="btn btn-primary btn-sm">
+      <i class="bi bi-plus me-1"></i> Add address
+    </a>
+  </div>
+
+  {% include "account/_nav.html" %}
+
+  {% if addresses %}
+    <div class="row row-cols-1 row-cols-md-2 g-3">
+      {% for a in addresses %}
+        <div class="col">
+          <div class="card h-100" style="border-radius:var(--radius-xl);
+               {% if a.is_default %}border:2px solid var(--c-primary);{% endif %}">
+            <div class="card-body p-4 d-flex flex-column h-100">
+              <div class="d-flex align-items-center gap-2 mb-2">
+                <strong style="font-size:.95rem;">{{ a.label }}</strong>
+                {% if a.is_default %}
+                  <span class="badge badge-fresh" style="font-size:.65rem;">Default</span>
+                {% endif %}
+              </div>
+              <div style="font-size:.88rem;color:var(--c-muted);line-height:1.7;">
+                <strong style="color:var(--c-text);">{{ a.recipient_name }}</strong><br>
+                {{ a.line1 }}{% if a.line2 %}<br>{{ a.line2 }}{% endif %}<br>
+                {{ a.city }}{% if a.state %}, {{ a.state }}{% endif %}
+                {% if a.postal_code %} {{ a.postal_code }}{% endif %}<br>
+                {{ a.country }}<br>
+                {{ a.phone }}
+              </div>
+              <div class="d-flex gap-1 mt-auto pt-3">
+                <a href="{{ url_for('account.edit_address', address_id=a.address_id) }}"
+                   class="btn btn-outline btn-sm">Edit</a>
+                {% if not a.is_default %}
+                  <form action="{{ url_for('account.make_default_address', address_id=a.address_id) }}"
+                        method="post">
+                    <button class="btn btn-ghost btn-sm" type="submit">Make default</button>
+                  </form>
+                {% endif %}
+                <form action="{{ url_for('account.delete_address', address_id=a.address_id) }}"
+                      method="post" class="ms-auto"
+                      onsubmit="return confirm('Remove this address?')">
+                  <button class="btn btn-danger-outline btn-sm" type="submit">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state">
+      <div class="icon">📍</div>
+      <h4 style="color:var(--c-text);margin-bottom:.5rem;">No saved addresses</h4>
+      <p>Save one now and checkout becomes a two-click job.</p>
+      <a href="{{ url_for('account.new_address') }}" class="btn btn-primary mt-2">
+        <i class="bi bi-plus me-1"></i> Add your first address
+      </a>
+    </div>
+  {% endif %}
+
+</div>
+{% endblock %}

@@ -6,69 +6,149 @@
 
   <!-- Breadcrumb -->
   <nav class="breadcrumb-nav">
-    <a href="{{ url_for('main.index') }}">🏠 Home</a>
+    <a href="{{ url_for('main.index') }}">Home</a>
     <span class="sep">/</span>
     <a href="{{ url_for('products.list_products') }}">Shop</a>
-    <span class="sep">/</span>
-    <a href="{{ url_for('products.list_products', category=product.category_id) }}">{{ product.category.name }}</a>
+    {% for crumb in product.category.breadcrumb() %}
+      <span class="sep">/</span>
+      <a href="{{ url_for('products.list_products', category=crumb.category_id) }}">{{ crumb.name }}</a>
+    {% endfor %}
     <span class="sep">/</span>
     <span style="color:var(--c-text);font-weight:600;">{{ product.name }}</span>
   </nav>
 
   <div class="row g-5">
 
-    <!-- Image Gallery -->
+    <!-- ── Gallery ───────────────────────────────────────────────────────── -->
     <div class="col-12 col-md-5">
-      <div id="productImageArea"
-           style="aspect-ratio:1;background:linear-gradient(135deg,var(--c-primary-lt),var(--c-border-lt));
+      {% set gallery = product.gallery_urls() %}
+      <div style="aspect-ratio:1;background:linear-gradient(135deg,var(--c-primary-lt),var(--c-border-lt));
                   border-radius:var(--radius-xl);overflow:hidden;
-                  display:flex;align-items:center;justify-content:center;
-                  box-shadow:var(--shadow);">
-        {% set first = product.variants.first() %}
-        {% if first and first.image %}
-          <img id="mainImage" src="{{ first.image }}" alt="{{ product.name }}"
+                  display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow);">
+        {% if gallery %}
+          <img id="mainImage" src="{{ gallery[0] }}" alt="{{ product.name }}"
                style="width:100%;height:100%;object-fit:cover;"/>
         {% else %}
-          <span style="font-size:6rem;opacity:.4;">🍃</span>
+          <span style="font-size:6rem;opacity:.35;">✧</span>
         {% endif %}
       </div>
-      <!-- Variant thumbnails -->
-      {% set has_thumbs = product.variants|selectattr('image')|list %}
-      {% if has_thumbs %}
+
+      {% if gallery|length > 1 %}
       <div class="d-flex gap-2 mt-3 flex-wrap">
-        {% for v in product.variants %}
-          {% if v.image %}
-            <img src="{{ v.image }}" alt=""
-                 onclick="document.getElementById('mainImage').src=this.src;
-                          document.querySelectorAll('.thumb-img').forEach(t=>t.style.borderColor='var(--c-border)');
-                          this.style.borderColor='var(--c-primary)';"
-                 class="thumb-img"
-                 style="width:60px;height:60px;object-fit:cover;border-radius:var(--radius-lg);
-                        cursor:pointer;border:2px solid var(--c-border);transition:border-color .15s;"/>
-          {% endif %}
+        {% for url in gallery %}
+          <img src="{{ url }}" alt=""
+               onclick="document.getElementById('mainImage').src=this.src;
+                        document.querySelectorAll('.thumb-img').forEach(t=>t.style.borderColor='var(--c-border)');
+                        this.style.borderColor='var(--c-primary)';"
+               class="thumb-img"
+               style="width:64px;height:64px;object-fit:cover;border-radius:var(--radius-lg);
+                      cursor:pointer;border:2px solid {% if loop.first %}var(--c-primary){% else %}var(--c-border){% endif %};
+                      transition:border-color .15s;"/>
         {% endfor %}
       </div>
       {% endif %}
+
+      <!-- Specs -->
+      <div class="spec-grid mt-4">
+        {% if product.volume_label %}
+          <div class="spec-cell"><span class="k">Size</span><span class="v">{{ product.volume_label }}</span></div>
+        {% endif %}
+        {% if product.texture %}
+          <div class="spec-cell"><span class="k">Texture</span><span class="v">{{ product.texture }}</span></div>
+        {% endif %}
+        {% if product.spf %}
+          <div class="spec-cell"><span class="k">Protection</span><span class="v">SPF {{ product.spf }}</span></div>
+        {% endif %}
+        {% if product.pao_months %}
+          <div class="spec-cell">
+            <span class="k">Use within</span>
+            <span class="v">{{ product.pao_months }}M open</span>
+          </div>
+        {% endif %}
+        {% if product.routine_step %}
+          <div class="spec-cell">
+            <span class="k">Routine step</span>
+            <span class="v">{{ product.routine_step }}. {{ product.routine_step_label() }}</span>
+          </div>
+        {% endif %}
+      </div>
     </div>
 
-    <!-- Product Info -->
+    <!-- ── Product Info ──────────────────────────────────────────────────── -->
     <div class="col-12 col-md-7">
-      <span class="product-category-tag mb-3 d-inline-block">{{ product.category.name }}</span>
-      <h1 style="font-size:2rem;font-weight:800;margin-bottom:.6rem;">{{ product.name }}</h1>
 
-      <!-- Rating -->
-      {% if product.avg_rating() > 0 %}
-        <div class="d-flex align-items-center gap-2 mb-3">
-          <span class="stars">{% for i in range(product.avg_rating()|int) %}★{% endfor %}{% for i in range(5 - product.avg_rating()|int) %}☆{% endfor %}</span>
-          <span style="font-size:.85rem;color:var(--c-muted);font-family:var(--font-mono);">
-            {{ product.avg_rating() }} ({{ reviews|length }} review{{ 's' if reviews|length != 1 }})
+      {% if product.brand %}
+        <a href="{{ url_for('products.by_brand', slug=product.brand.slug) }}"
+           style="font-size:.78rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;
+                  color:var(--c-muted);text-decoration:none;">
+          {{ product.brand.name }}
+        </a>
+      {% endif %}
+
+      <h1 style="font-size:2rem;font-weight:800;margin:.35rem 0 .6rem;">{{ product.name }}</h1>
+
+      <div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
+        <span class="product-category-tag">{{ product.product_type or product.category.name }}</span>
+        {% if product.avg_rating() > 0 %}
+          <span class="d-flex align-items-center gap-2">
+            <span class="stars">{% for i in range(product.avg_rating()|round|int) %}★{% endfor %}{% for i in range(5 - product.avg_rating()|round|int) %}☆{% endfor %}</span>
+            <a href="#reviews" style="font-size:.85rem;color:var(--c-muted);font-family:var(--font-mono);">
+              {{ product.avg_rating() }} ({{ total_reviews }})
+            </a>
           </span>
+        {% endif %}
+      </div>
+
+      <p style="color:var(--c-muted);line-height:1.8;margin-bottom:1.25rem;font-size:.95rem;">
+        {{ product.description or 'No description available.' }}
+      </p>
+
+      <!-- Claims -->
+      {% if product.claims() %}
+        <div class="d-flex flex-wrap gap-2 mb-3">
+          {% for claim in product.claims() %}
+            <span class="claim-chip"><i class="bi bi-check-lg"></i>{{ claim }}</span>
+          {% endfor %}
         </div>
       {% endif %}
 
-      <p style="color:var(--c-muted);line-height:1.8;margin-bottom:1.5rem;font-size:.95rem;">
-        {{ product.description or 'No description available.' }}
-      </p>
+      <!-- Key ingredients -->
+      {% set keys = product.key_ingredients() %}
+      {% if keys %}
+        <p class="section-title mb-2">Key ingredients</p>
+        <div class="d-flex flex-wrap gap-2 mb-3">
+          {% for link in keys %}
+            <a class="ingredient-pill"
+               href="{{ url_for('products.by_ingredient', slug=link.ingredient.slug) }}">
+              {{ link.ingredient.name }}
+              {% if link.concentration %}<span class="conc">{{ link.concentration }}</span>{% endif %}
+            </a>
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      <!-- Good for -->
+      <div class="d-flex flex-wrap gap-3 mb-3" style="font-size:.85rem;">
+        {% if product.skin_types.count() %}
+          <div>
+            <span style="color:var(--c-muted);font-weight:700;">Good for:</span>
+            {% for s in product.skin_types %}
+              <a href="{{ url_for('products.list_products', skin_type=s.skin_type_id) }}"
+                 style="font-weight:600;">{{ s.name }}</a>{% if not loop.last %}, {% endif %}
+            {% endfor %}
+          </div>
+        {% endif %}
+      </div>
+      {% if product.concerns.count() %}
+        <div class="d-flex flex-wrap gap-1 mb-3">
+          {% for c in product.concerns %}
+            <a class="filter-chip" style="font-size:.74rem;padding:.22rem .6rem;"
+               href="{{ url_for('products.by_concern', slug=c.slug) }}">
+              {{ c.icon or '' }} {{ c.name }}
+            </a>
+          {% endfor %}
+        </div>
+      {% endif %}
 
       <!-- Promotions -->
       {% set active_promos = product.promotions.all() %}
@@ -77,7 +157,7 @@
           {% for p in active_promos %}
             {% if p.is_active() %}
               <span class="badge badge-organic" style="font-size:.8rem;padding:.35rem .8rem;">
-                🎉 {{ p.name }}: {{ p.discount_percent }}% off
+                {{ p.name }}: {{ p.discount_percent }}% off
               </span>
             {% endif %}
           {% endfor %}
@@ -86,36 +166,48 @@
 
       <hr class="divider">
 
-      {% if product.variants.count() > 0 %}
+      {% set first_variant = product.variants.first() %}
+      {% if first_variant %}
         <form action="{{ url_for('cart.add_to_cart') }}" method="post">
           <!-- Variant -->
           <div class="mb-3">
-            <label class="form-label">Choose Variant</label>
-            <select name="variant_id" class="form-select" id="variantSelect"
-                    onchange="updatePrice(this)">
+            <label class="form-label" for="variantSelect">Size / shade</label>
+            <select name="variant_id" class="form-select" id="variantSelect" onchange="updateVariant(this)">
               {% for v in product.variants %}
                 <option value="{{ v.variant_id }}"
                         data-price="{{ v.price }}"
+                        data-was="{{ v.compare_at_price or '' }}"
                         data-stock="{{ v.stock }}"
+                        data-sku="{{ v.sku or '' }}"
+                        data-expiry="{{ v.expiry_date.strftime('%b %Y') if v.expiry_date else '' }}"
                         {% if v.stock == 0 %}disabled{% endif %}>
-                  {% if v.size %}{{ v.size }}{% endif %}
-                  {% if v.color %} / {{ v.color }}{% endif %}
+                  {{ v.label() }}
                   — ${{ "%.2f"|format(v.price|float) }}
                   {% if v.stock == 0 %} (Out of stock){% endif %}
-                  {% if v.stock > 0 and v.stock <= 5 %} ({{ v.stock }} left!){% endif %}
+                  {% if v.stock > 0 and v.stock <= 5 %} ({{ v.stock }} left){% endif %}
                 </option>
               {% endfor %}
             </select>
           </div>
 
           <!-- Price -->
-          <div class="mb-4 d-flex align-items-center gap-3">
+          <div class="mb-3 d-flex align-items-center gap-3 flex-wrap">
             <span id="displayPrice" style="font-size:2rem;font-weight:800;color:var(--c-primary);font-family:var(--font-mono);">
-              ${{ "%.2f"|format(product.variants.first().price|float) }}
+              ${{ "%.2f"|format(first_variant.price|float) }}
             </span>
-            <span id="stockInfo" class="badge badge-fresh" style="font-size:.82rem;">
-              {{ product.variants.first().stock }} in stock
+            <span id="displayWas" class="price-was" style="font-size:1rem;
+                  {% if not first_variant.is_on_sale() %}display:none;{% endif %}">
+              {% if first_variant.compare_at_price %}${{ "%.2f"|format(first_variant.compare_at_price|float) }}{% endif %}
             </span>
+            <span id="stockInfo" class="badge {% if first_variant.stock == 0 %}badge-danger{% elif first_variant.stock <= 5 %}badge-organic{% else %}badge-fresh{% endif %}"
+                  style="font-size:.82rem;">
+              {% if first_variant.stock == 0 %}Out of stock{% else %}{{ first_variant.stock }} in stock{% endif %}
+            </span>
+          </div>
+
+          <div class="mb-4" style="font-size:.78rem;color:var(--c-muted);font-family:var(--font-mono);">
+            <span id="skuInfo">{% if first_variant.sku %}SKU {{ first_variant.sku }}{% endif %}</span>
+            <span id="expiryInfo">{% if first_variant.expiry_date %} · Best before {{ first_variant.expiry_date.strftime('%b %Y') }}{% endif %}</span>
           </div>
 
           <!-- Quantity -->
@@ -124,72 +216,276 @@
             <div class="qty-stepper">
               <button type="button" class="btn btn-ghost" onclick="adjustQty(-1)">−</button>
               <input type="number" name="quantity" id="qtyInput"
-                     value="1" min="1" max="{{ product.variants.first().stock }}">
+                     value="1" min="1" max="{{ [first_variant.stock, 1]|max }}">
               <button type="button" class="btn btn-ghost" onclick="adjustQty(1)">+</button>
             </div>
           </div>
 
           {% if current_user.is_authenticated %}
-            <button type="submit" class="btn btn-orange btn-lg w-100" style="font-size:1rem;">
-              <i class="bi bi-basket-fill me-2"></i> Add to Cart
-            </button>
+            <div class="d-flex gap-2">
+              <button type="submit" class="btn btn-orange btn-lg flex-grow-1"
+                      id="addBtn" {% if product.total_stock() == 0 %}disabled{% endif %}>
+                <i class="bi bi-bag-plus me-2"></i> Add to Cart
+              </button>
+            </div>
           {% else %}
-            <a href="{{ url_for('auth.login') }}" class="btn btn-primary btn-lg w-100" style="font-size:1rem;">
+            <a href="{{ url_for('auth.login') }}" class="btn btn-primary btn-lg w-100">
               <i class="bi bi-person me-2"></i> Log in to purchase
             </a>
           {% endif %}
         </form>
 
+        {% if current_user.is_authenticated %}
+        <div class="d-flex gap-2 mt-2 flex-wrap">
+          <!-- Wishlist -->
+          <form action="{{ url_for('account.toggle_wishlist') }}" method="post">
+            <input type="hidden" name="product_id" value="{{ product.product_id }}">
+            <button type="submit" class="btn btn-outline">
+              <i class="bi bi-heart{% if in_wishlist %}-fill{% endif %} me-1"></i>
+              {{ 'Saved' if in_wishlist else 'Save for later' }}
+            </button>
+          </form>
+
+          <!-- Subscribe & save -->
+          <form action="{{ url_for('account.new_subscription') }}" method="post"
+                class="d-flex gap-2 align-items-center">
+            <input type="hidden" name="variant_id" id="subVariantId" value="{{ first_variant.variant_id }}">
+            <select name="interval_days" class="form-select" style="width:auto;font-size:.85rem;">
+              <option value="30">Every month</option>
+              <option value="60" selected>Every 2 months</option>
+              <option value="90">Every 3 months</option>
+            </select>
+            <button type="submit" class="btn btn-outline">
+              <i class="bi bi-arrow-repeat me-1"></i> Subscribe &amp; save 10%
+            </button>
+          </form>
+        </div>
+
+        <!-- Back in stock -->
+        {% if product.total_stock() == 0 %}
+          <form action="{{ url_for('account.subscribe_alert') }}" method="post" class="mt-3">
+            <input type="hidden" name="variant_id" value="{{ first_variant.variant_id }}">
+            <button type="submit" class="btn btn-primary w-100">
+              <i class="bi bi-bell me-1"></i> Email me when it's back
+            </button>
+          </form>
+        {% endif %}
+        {% endif %}
+
         <!-- Trust badges -->
         <div class="d-flex flex-wrap gap-3 mt-4" style="font-size:.8rem;color:var(--c-muted);">
-          <span><i class="bi bi-shield-check text-primary me-1"></i>Quality guaranteed</span>
-          <span><i class="bi bi-arrow-counterclockwise text-primary me-1"></i>Easy returns</span>
-          <span><i class="bi bi-truck text-primary me-1"></i>Fast delivery</span>
+          <span><i class="bi bi-shield-check text-primary me-1"></i>Authentic &amp; batch-tracked</span>
+          <span><i class="bi bi-arrow-counterclockwise text-primary me-1"></i>30-day returns</span>
+          <span><i class="bi bi-truck text-primary me-1"></i>Free delivery over $35</span>
         </div>
 
       {% else %}
         <div class="alert alert-warning">
           <i class="bi bi-exclamation-triangle-fill me-2"></i>
-          No variants available for this product.
+          No sizes available for this product yet.
         </div>
       {% endif %}
     </div>
   </div>
 
+  <!-- ── How to use / Ingredients ────────────────────────────────────────── -->
+  <hr class="divider" style="margin:3rem 0 2rem;">
+  <div class="row g-4">
+    {% if product.how_to_use %}
+    <div class="col-12 col-md-6">
+      <div class="card h-100" style="border-radius:var(--radius-xl);">
+        <div class="card-body p-4">
+          <h5 style="font-weight:800;margin-bottom:1rem;">
+            <i class="bi bi-list-ol me-2" style="color:var(--c-primary);"></i>How to use
+          </h5>
+          <p style="font-size:.92rem;line-height:1.8;margin:0;">{{ product.how_to_use }}</p>
+          {% set cautions = product.ingredient_links|selectattr('ingredient.caution_note')|list %}
+          {% if cautions %}
+            <div class="alert alert-warning mt-3 d-block" style="font-size:.85rem;">
+              <strong><i class="bi bi-exclamation-triangle-fill me-1"></i>Before you start</strong>
+              <ul class="mb-0 mt-2" style="padding-left:1.1rem;">
+                {% for link in cautions %}
+                  <li>{{ link.ingredient.caution_note }}</li>
+                {% endfor %}
+              </ul>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="col-12 col-md-6">
+      <div class="card h-100" style="border-radius:var(--radius-xl);">
+        <div class="card-body p-4">
+          <h5 style="font-weight:800;margin-bottom:1rem;">
+            <i class="bi bi-droplet me-2" style="color:var(--c-primary);"></i>Ingredients
+          </h5>
+          {% if product.ingredient_links.count() %}
+            <p class="section-title mb-2">What's doing the work</p>
+            <div class="d-flex flex-column gap-2 mb-3">
+              {% for link in product.ingredient_links %}
+                <div class="d-flex align-items-start gap-2">
+                  <span style="color:var(--c-primary);">•</span>
+                  <div>
+                    <a href="{{ url_for('products.by_ingredient', slug=link.ingredient.slug) }}"
+                       style="font-weight:700;font-size:.9rem;">{{ link.ingredient.name }}</a>
+                    {% if link.concentration %}
+                      <span class="conc" style="font-family:var(--font-mono);font-size:.78rem;
+                                                 color:var(--c-primary);">{{ link.concentration }}</span>
+                    {% endif %}
+                    {% if link.ingredient.benefits %}
+                      <div style="font-size:.82rem;color:var(--c-muted);">{{ link.ingredient.benefits }}</div>
+                    {% endif %}
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+          {% endif %}
+          {% if product.ingredients_full %}
+            <p class="section-title mb-2">Full INCI list</p>
+            <p style="font-size:.8rem;line-height:1.7;color:var(--c-muted);margin:0;">
+              {{ product.ingredients_full }}
+            </p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Complete the routine ────────────────────────────────────────────── -->
+  {% if routine %}
+  <hr class="divider" style="margin:3rem 0 2rem;">
+  <div class="mb-3">
+    <p class="section-title mb-1">Works well with</p>
+    <h3 style="font-weight:800;margin:0;">Complete the routine</h3>
+  </div>
+  <div class="row row-cols-2 row-cols-sm-3 row-cols-lg-5 g-3">
+    {% for p in routine %}
+      <div class="col">
+        <a href="{{ url_for('products.detail', product_id=p.product_id) }}"
+           class="card h-100 text-decoration-none" style="border-radius:var(--radius-xl);">
+          <div class="product-img" style="aspect-ratio:1;">
+            {% if p.primary_image_url() %}
+              <img src="{{ p.primary_image_url() }}" alt="{{ p.name }}" loading="lazy"/>
+            {% endif %}
+          </div>
+          <div class="card-body p-3">
+            <div class="d-flex align-items-center gap-2 mb-1">
+              <span class="routine-step" style="width:22px;height:22px;font-size:.7rem;">{{ p.routine_step }}</span>
+              <span style="font-size:.7rem;font-weight:800;text-transform:uppercase;
+                           letter-spacing:.08em;color:var(--c-muted);">{{ p.routine_step_label() }}</span>
+            </div>
+            <div style="font-size:.85rem;font-weight:700;color:var(--c-text);line-height:1.3;">{{ p.name }}</div>
+            <div class="product-price mt-1" style="font-size:.9rem;">${{ "%.2f"|format(p.base_price|float) }}</div>
+          </div>
+        </a>
+      </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
   <hr class="divider" style="margin:3rem 0;">
 
-  <!-- Reviews Section -->
-  <div class="row g-5">
+  <!-- ── Reviews ─────────────────────────────────────────────────────────── -->
+  <div class="row g-5" id="reviews">
     <div class="col-12 col-md-7">
-      <h3 style="font-weight:800;margin-bottom:1.5rem;">
-        Customer Reviews
-        {% if reviews %}
+      <h3 style="font-weight:800;margin-bottom:1.25rem;">
+        Reviews
+        {% if total_reviews %}
           <span class="badge badge-fresh ms-2" style="font-size:.75rem;vertical-align:middle;">
-            {{ reviews|length }}
+            {{ total_reviews }}
           </span>
         {% endif %}
       </h3>
+
+      {% if total_reviews %}
+        <!-- Rating breakdown -->
+        <div class="card mb-4" style="border-radius:var(--radius-xl);">
+          <div class="card-body p-4">
+            <div class="d-flex align-items-center gap-4 mb-3">
+              <div style="text-align:center;">
+                <div style="font-size:2.4rem;font-weight:800;line-height:1;color:var(--c-text);">
+                  {{ product.avg_rating() }}
+                </div>
+                <div class="stars">{% for i in range(product.avg_rating()|round|int) %}★{% endfor %}</div>
+                <div style="font-size:.75rem;color:var(--c-muted);">{{ total_reviews }} reviews</div>
+              </div>
+              <div class="flex-grow-1 d-flex flex-column gap-1">
+                {% for n in [5,4,3,2,1] %}
+                  <div class="d-flex align-items-center gap-2">
+                    <span style="font-size:.75rem;width:24px;color:var(--c-muted);">{{ n }}★</span>
+                    <span class="rating-bar">
+                      <span style="width:{{ (breakdown[n] / total_reviews * 100)|round|int }}%;"></span>
+                    </span>
+                    <span style="font-size:.75rem;width:24px;color:var(--c-muted);
+                                 font-family:var(--font-mono);">{{ breakdown[n] }}</span>
+                  </div>
+                {% endfor %}
+              </div>
+            </div>
+
+            <!-- Filter reviews by skin type — the whole point in skincare -->
+            <div class="d-flex flex-wrap gap-1 pt-3" style="border-top:1px solid var(--c-border-lt);">
+              <span style="font-size:.78rem;font-weight:700;color:var(--c-muted);align-self:center;
+                           margin-right:.35rem;">Skin type:</span>
+              <a class="filter-chip {% if not review_skin_type %}active{% endif %}"
+                 style="font-size:.74rem;padding:.2rem .6rem;"
+                 href="{{ url_for('products.detail', product_id=product.product_id) }}#reviews">All</a>
+              {% for s in skin_types %}
+                <a class="filter-chip {% if review_skin_type == s.skin_type_id %}active{% endif %}"
+                   style="font-size:.74rem;padding:.2rem .6rem;"
+                   href="{{ url_for('products.detail', product_id=product.product_id,
+                                    review_skin_type=s.skin_type_id) }}#reviews">{{ s.name }}</a>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      {% endif %}
 
       {% if reviews %}
         {% for r in reviews %}
           <div class="card mb-3" style="border-radius:var(--radius-xl);">
             <div class="card-body">
-              <div class="d-flex align-items-center justify-content-between mb-2">
+              <div class="d-flex align-items-start justify-content-between mb-2 gap-2">
                 <div class="d-flex align-items-center gap-2">
                   <span style="width:36px;height:36px;border-radius:99px;background:var(--c-primary-lt);
                                display:inline-flex;align-items:center;justify-content:center;
-                               font-weight:800;color:var(--c-primary);font-size:.9rem;">
+                               font-weight:800;color:var(--c-primary);font-size:.9rem;flex-shrink:0;">
                     {{ r.user.name[0].upper() }}
                   </span>
-                  <strong style="font-size:.92rem;color:var(--c-text);">{{ r.user.name }}</strong>
+                  <div>
+                    <strong style="font-size:.92rem;color:var(--c-text);">{{ r.user.name }}</strong>
+                    <div style="font-size:.74rem;color:var(--c-muted);">
+                      {% if r.skin_type %}{{ r.skin_type.name }} skin{% endif %}
+                      {% if r.age_range %} · {{ r.age_range }}{% endif %}
+                      {% if r.is_verified_purchase %}
+                        · <span style="color:var(--c-primary);font-weight:700;">
+                            <i class="bi bi-patch-check-fill"></i> Verified purchase</span>
+                      {% endif %}
+                    </div>
+                  </div>
                 </div>
-                <span style="font-size:.75rem;color:var(--c-muted);font-family:var(--font-mono);">
+                <span style="font-size:.75rem;color:var(--c-muted);font-family:var(--font-mono);
+                             white-space:nowrap;">
                   {{ r.created_at.strftime('%b %d, %Y') }}
                 </span>
               </div>
-              <div class="stars mb-2">{% for i in range(r.rating) %}★{% endfor %}{% for i in range(5 - r.rating) %}☆{% endfor %}</div>
+              <div class="stars mb-1">{% for i in range(r.rating) %}★{% endfor %}{% for i in range(5 - r.rating) %}☆{% endfor %}</div>
+              {% if r.title %}
+                <div style="font-weight:800;font-size:.95rem;color:var(--c-text);margin-bottom:.25rem;">
+                  {{ r.title }}
+                </div>
+              {% endif %}
               {% if r.comment %}
                 <p class="mb-0" style="font-size:.9rem;color:var(--c-text);">{{ r.comment }}</p>
+              {% endif %}
+              {% if current_user.is_authenticated and (r.user_id == current_user.user_id or current_user.is_admin()) %}
+                <form action="{{ url_for('reviews.delete', review_id=r.review_id) }}" method="post"
+                      class="mt-2" onsubmit="return confirm('Delete this review?')">
+                  <button class="btn btn-ghost btn-sm" type="submit"
+                          style="font-size:.75rem;color:var(--c-danger);">Delete</button>
+                </form>
               {% endif %}
             </div>
           </div>
@@ -197,7 +493,10 @@
       {% else %}
         <div class="empty-state" style="padding:2.5rem 1rem;">
           <div class="icon">✍️</div>
-          <p>No reviews yet. Be the first to share your experience!</p>
+          <p>
+            {% if review_skin_type %}No reviews yet from this skin type.
+            {% else %}No reviews yet. Be the first to share how it worked for your skin.{% endif %}
+          </p>
         </div>
       {% endif %}
     </div>
@@ -205,33 +504,67 @@
     <!-- Leave a review -->
     {% if current_user.is_authenticated %}
     <div class="col-12 col-md-5">
-      <div class="card" style="border-radius:var(--radius-xl);border:2px solid var(--c-border);">
+      <div class="card" style="border-radius:var(--radius-xl);border:2px solid var(--c-border);
+                               position:sticky;top:calc(var(--nav-h) + 1rem);">
         <div class="card-body p-4">
           <h5 style="font-weight:800;margin-bottom:1.25rem;">
-            <i class="bi bi-star-fill me-2" style="color:var(--c-yellow);"></i>Leave a Review
+            <i class="bi bi-star-fill me-2" style="color:var(--c-yellow);"></i>Write a review
           </h5>
           <form action="{{ url_for('reviews.submit') }}" method="post">
             <input type="hidden" name="product_id" value="{{ product.product_id }}">
 
             <div class="mb-3">
-              <label class="form-label">Your Rating</label>
+              <label class="form-label">Your rating</label>
               <div class="stars-input" id="starRating">
                 {% for i in [5,4,3,2,1] %}
                   <input type="radio" name="rating" id="star{{ i }}" value="{{ i }}"
-                         {% if loop.last %}checked{% endif %}>
+                         {% if loop.first %}checked{% endif %}>
                   <label for="star{{ i }}">★</label>
                 {% endfor %}
               </div>
             </div>
 
+            <div class="mb-3">
+              <label class="form-label" for="title">Headline</label>
+              <input type="text" class="form-control" id="title" name="title" maxlength="160"
+                     placeholder="Sum it up in a few words">
+            </div>
+
+            <div class="row g-2 mb-3">
+              <div class="col-6">
+                <label class="form-label" for="skin_type_id">Your skin type</label>
+                <select class="form-select" id="skin_type_id" name="skin_type_id">
+                  <option value="">Prefer not to say</option>
+                  {% for s in skin_types %}
+                    <option value="{{ s.skin_type_id }}"
+                            {% if current_user.skin_profile and current_user.skin_profile.skin_type_id == s.skin_type_id %}selected{% endif %}>
+                      {{ s.name }}
+                    </option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-6">
+                <label class="form-label" for="age_range">Age range</label>
+                <select class="form-select" id="age_range" name="age_range">
+                  <option value="">Prefer not to say</option>
+                  {% for a in ['Under 18','18-24','25-34','35-44','45-54','55+'] %}
+                    <option value="{{ a }}"
+                            {% if current_user.skin_profile and current_user.skin_profile.age_range == a %}selected{% endif %}>
+                      {{ a }}
+                    </option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+
             <div class="mb-4">
-              <label class="form-label" for="comment">Your Comment</label>
-              <textarea class="form-control" id="comment" name="comment" rows="3"
-                        placeholder="Tell us about the freshness, taste, delivery…"></textarea>
+              <label class="form-label" for="comment">Your review</label>
+              <textarea class="form-control" id="comment" name="comment" rows="4"
+                        placeholder="How long did you use it? What changed? Any irritation?"></textarea>
             </div>
 
             <button type="submit" class="btn btn-primary w-100">
-              <i class="bi bi-chat-left-text me-1"></i> Submit Review
+              <i class="bi bi-chat-left-text me-1"></i> Submit review
             </button>
           </form>
         </div>
@@ -240,14 +573,12 @@
     {% endif %}
   </div>
 
-  <!-- Related Products -->
+  <!-- Related -->
   {% if related %}
   <hr class="divider" style="margin:3rem 0 2rem;">
-  <div class="d-flex align-items-center justify-content-between mb-3">
-    <div>
-      <p class="section-title mb-0">More to Explore</p>
-      <h3 style="font-weight:800;margin:0;">You May Also Like</h3>
-    </div>
+  <div class="mb-3">
+    <p class="section-title mb-1">Targets the same concerns</p>
+    <h3 style="font-weight:800;margin:0;">You may also like</h3>
   </div>
   <div class="row row-cols-2 row-cols-sm-4 g-3">
     {% for product in related %}{% include "products/_card.html" %}{% endfor %}
@@ -259,17 +590,36 @@
 
 {% block scripts %}
 <script>
-function updatePrice(sel) {
+function updateVariant(sel) {
   const opt   = sel.options[sel.selectedIndex];
   const price = parseFloat(opt.dataset.price).toFixed(2);
   const stock = parseInt(opt.dataset.stock);
+  const was   = opt.dataset.was;
+
   document.getElementById('displayPrice').textContent = '$' + price;
+
+  const wasEl = document.getElementById('displayWas');
+  if (was && parseFloat(was) > parseFloat(price)) {
+    wasEl.textContent = '$' + parseFloat(was).toFixed(2);
+    wasEl.style.display = '';
+  } else {
+    wasEl.style.display = 'none';
+  }
+
   const si = document.getElementById('stockInfo');
-  si.textContent = stock + ' in stock';
-  si.className = 'badge ' + (stock <= 5 ? 'badge-organic' : 'badge-fresh');
+  si.textContent = stock === 0 ? 'Out of stock' : stock + ' in stock';
+  si.className = 'badge ' + (stock === 0 ? 'badge-danger' : stock <= 5 ? 'badge-organic' : 'badge-fresh');
+
+  document.getElementById('skuInfo').textContent = opt.dataset.sku ? 'SKU ' + opt.dataset.sku : '';
+  document.getElementById('expiryInfo').textContent =
+    opt.dataset.expiry ? ' · Best before ' + opt.dataset.expiry : '';
+
   const qty = document.getElementById('qtyInput');
-  qty.max = stock;
+  qty.max = Math.max(stock, 1);
   if (parseInt(qty.value) > stock) qty.value = Math.max(1, stock);
+
+  const subInput = document.getElementById('subVariantId');
+  if (subInput) subInput.value = sel.value;
 }
 
 function adjustQty(delta) {

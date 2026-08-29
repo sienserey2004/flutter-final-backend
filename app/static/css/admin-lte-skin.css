@@ -1,0 +1,89 @@
+/* Aurea Skin — brand tint for the AdminLTE v4 admin panel.
+   Loads after adminlte.css, so these overrides win the cascade on ties. */
+
+/* Every sidebar click is a full page reload, so scroll position is restored
+   by JS on each load (see base_admin.html). Staying hidden until that JS has
+   run — instead of painting at the top first — is what prevents the visible
+   jump/flicker to the restored position. */
+.sidebar-wrapper { visibility: hidden; }
+.sidebar-wrapper.scroll-ready { visibility: visible; }
+
+/* admin-nav.js: brief dim while a sidebar click's fetch is in flight. */
+body.admin-nav-loading #app-main-region { opacity: .55; transition: opacity .15s linear; }
+
+:root {
+  --admin-brand:    #3c4c33;
+  --admin-brand-dk: #2b3826;
+  --admin-lime:     #c9ee52;
+  --admin-lime-ink: #24301c;
+
+  /* Bootstrap's .bg-primary/.text-bg-primary/.border-primary read this variable
+     at use-time, so this retints badges, small-box/info-box widgets and
+     progress bars. .btn-primary's hover/active shades are precompiled per-color
+     by Bootstrap and stay stock blue on purpose — brand identity lives in the
+     sidebar/header chrome instead, so primary action buttons stay unambiguous. */
+  --bs-primary: var(--admin-brand);
+  --bs-primary-rgb: 60, 76, 51;
+}
+
+body { font-family: 'Figtree', var(--bs-body-font-family, sans-serif); }
+
+/* ── Sidebar — forest chrome with a lime active state ──────────────────────── */
+[data-bs-theme=dark].app-sidebar,
+[data-bs-theme=dark] .app-sidebar {
+  --lte-sidebar-menu-active-bg: var(--admin-lime);
+  --lte-sidebar-menu-active-color: var(--admin-lime-ink);
+  --lte-sidebar-submenu-active-color: var(--admin-lime);
+  --lte-sidebar-hover-bg: rgba(201, 238, 82, .14);
+  --lte-sidebar-hover-color: #fff;
+}
+.app-sidebar { background-color: var(--admin-lime-ink); }
+
+.brand-mark {
+  width: 30px; height: 30px;
+  background: var(--admin-lime);
+  color: var(--admin-lime-ink);
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: .95rem;
+  flex-shrink: 0;
+}
+.sidebar-brand .brand-text {
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  font-size: .95rem;
+}
+
+/* ── Sortable table headers (see admin-table.js) ───────────────────────────── */
+th.admin-sortable-th { cursor: pointer; user-select: none; white-space: nowrap; }
+th.admin-sortable-th:hover { color: var(--bs-emphasis-color); }
+.admin-sort-icon { font-size: .7em; opacity: .7; }
+
+/* ── Chip-style multi-select (skin types / concerns pickers) ───────────────── */
+.chip-check { position: absolute; opacity: 0; width: 0; height: 0; }
+.filter-chip {
+  display: inline-block;
+  border: 1.5px solid var(--bs-border-color);
+  border-radius: 999px;
+  padding: .3rem .8rem;
+  font-size: .8rem;
+  font-weight: 600;
+  color: var(--bs-secondary-color);
+  background: var(--bs-body-bg);
+  cursor: pointer;
+  transition: all .15s;
+}
+.filter-chip:hover { border-color: var(--admin-brand); color: var(--admin-brand); }
+.chip-check:checked + .filter-chip {
+  background: var(--admin-brand);
+  border-color: var(--admin-brand);
+  color: #fff;
+}
+.chip-check:focus-visible + .filter-chip { outline: 2px solid var(--admin-lime); outline-offset: 2px; }
+
+/* ── Mailbox (Stock Alerts) ─────────────────────────────────────────────────── */
+.mailbox-messages .mailbox-name { font-weight: 600; }
+.mailbox-messages tr.mailbox-urgent .mailbox-name { color: var(--bs-danger); }

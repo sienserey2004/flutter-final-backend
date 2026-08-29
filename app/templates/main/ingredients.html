@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Ingredient Glossary{% endblock %}
+
+{% block content %}
+<div class="page-container">
+
+  <div class="mb-4">
+    <p class="section-title mb-1">Know what you're putting on</p>
+    <h2 style="font-weight:800;margin:0;">Ingredient glossary</h2>
+    <p class="mt-2" style="max-width:680px;">
+      What each ingredient does, at what strength it works, and when it needs care.
+      Click any ingredient to see the products that contain it.
+    </p>
+  </div>
+
+  <h4 style="font-weight:800;margin-bottom:1rem;">Active ingredients</h4>
+  <div class="row row-cols-1 row-cols-md-2 g-3 mb-5">
+    {% for i in actives %}
+      <div class="col">
+        <div class="card h-100" style="border-radius:var(--radius-xl);">
+          <div class="card-body">
+            <div class="d-flex align-items-baseline justify-content-between gap-2 mb-1">
+              <a href="{{ url_for('products.by_ingredient', slug=i.slug) }}"
+                 style="font-weight:800;font-size:1.05rem;color:var(--c-text);">{{ i.name }}</a>
+              <span class="badge badge-fresh" style="font-size:.68rem;">
+                {{ i.product_links.count() }} product{{ 's' if i.product_links.count() != 1 }}
+              </span>
+            </div>
+            {% if i.inci_name %}
+              <div style="font-family:var(--font-mono);font-size:.74rem;color:var(--c-muted);
+                          margin-bottom:.5rem;">{{ i.inci_name }}</div>
+            {% endif %}
+            {% if i.benefits %}
+              <p style="font-size:.88rem;margin-bottom:{{ '.6rem' if i.caution_note else '0' }};">
+                {{ i.benefits }}
+              </p>
+            {% endif %}
+            {% if i.caution_note %}
+              <div style="background:var(--c-yellow-lt);border-radius:var(--radius);
+                          padding:.5rem .75rem;font-size:.8rem;color:#7c5800;">
+                <i class="bi bi-exclamation-triangle-fill me-1"></i>{{ i.caution_note }}
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+
+  {% if supporting %}
+  <h4 style="font-weight:800;margin-bottom:1rem;">Supporting ingredients</h4>
+  <div class="row row-cols-1 row-cols-md-3 g-3">
+    {% for i in supporting %}
+      <div class="col">
+        <div class="card h-100" style="border-radius:var(--radius-xl);">
+          <div class="card-body">
+            <a href="{{ url_for('products.by_ingredient', slug=i.slug) }}"
+               style="font-weight:800;color:var(--c-text);">{{ i.name }}</a>
+            {% if i.inci_name %}
+              <div style="font-family:var(--font-mono);font-size:.72rem;color:var(--c-muted);
+                          margin-bottom:.4rem;">{{ i.inci_name }}</div>
+            {% endif %}
+            {% if i.benefits %}
+              <p style="font-size:.85rem;margin:0;">{{ i.benefits }}</p>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

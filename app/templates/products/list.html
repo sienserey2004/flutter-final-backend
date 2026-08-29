@@ -7,79 +7,265 @@
   <!-- Header -->
   <div class="d-flex align-items-end justify-content-between mb-4 flex-wrap gap-2">
     <div>
-      <p class="section-title mb-1">
-        <i class="bi bi-basket2 me-1"></i>Fresh Produce
-      </p>
+      <p class="section-title mb-1">Shop</p>
       <h2 class="mb-0" style="font-weight:800;">
-        {% if search %}Results for "{{ search }}"
-        {% elif current_category %}{{ categories|selectattr('category_id','eq',current_category)|map(attribute='name')|first }}
+        {% if f.search %}Results for "{{ f.search }}"
+        {% elif f.category_id %}{{ all_categories|selectattr('category_id','eq',f.category_id)|map(attribute='name')|first }}
         {% else %}All Products{% endif %}
       </h2>
     </div>
     <span style="font-size:.85rem; color:var(--c-muted); font-family:var(--font-mono); font-weight:600;">
-      {{ products.total }} item{{ 's' if products.total != 1 }} found
+      {{ products.total }} product{{ 's' if products.total != 1 }}
     </span>
   </div>
 
   <div class="row g-4">
 
-    <!-- Sidebar filters -->
+    <!-- ── Sidebar filters ─────────────────────────────────────────────────── -->
     <div class="col-12 col-lg-3">
-      <div class="card" style="border-radius:var(--radius-xl);position:sticky;top:calc(var(--nav-h) + 1rem);">
-        <div class="card-body p-3">
-          <p class="section-title mb-3">
-            <i class="bi bi-funnel me-1"></i>Filter & Search
-          </p>
+      {# A group opens on load when it holds an active filter, so nothing the
+         customer has chosen is ever hidden behind a closed accordion. #}
+      {% set toggles_on = [f.in_stock, f.on_sale, f.spf_only]|select|list|length %}
+      {% set active_total = (f.concern_ids|length + f.ingredient_ids|length
+                             + f.brand_ids|length + f.claim_keys|length + toggles_on
+                             + (1 if f.skin_type_id else 0)
+                             + (1 if f.category_id else 0)
+                             + (1 if f.product_type else 0)
+                             + (1 if f.routine_step else 0)
+                             + (1 if f.min_price is not none or f.max_price is not none else 0)) %}
 
-          <form method="get" action="{{ url_for('products.list_products') }}">
-            <!-- Search -->
-            <div class="mb-4">
-              <label class="form-label">Search</label>
-              <div class="d-flex gap-2">
-                <input type="text" name="q" class="form-control" placeholder="Search fruits…"
-                       value="{{ search }}" style="border-radius:var(--radius-lg);">
-                <button class="btn btn-primary btn-sm px-3" type="submit">
-                  <i class="bi bi-search"></i>
-                </button>
-              </div>
+      <form method="get" action="{{ url_for('products.list_products') }}" id="filterForm">
+        <div class="card" style="border-radius:var(--radius-xl);
+                                 position:sticky;top:calc(var(--nav-h) + 1rem);">
+          <div class="card-body p-3">
+
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <p class="section-title mb-0">
+                <i class="bi bi-funnel me-1"></i>Filters
+                {% if active_total %}<span class="filter-count ms-1">{{ active_total }}</span>{% endif %}
+              </p>
+              {% if active_total or f.search %}
+                <a href="{{ url_for('products.list_products') }}"
+                   class="btn btn-ghost btn-sm" style="font-size:.72rem;">Clear all</a>
+              {% endif %}
             </div>
 
-            <!-- Category -->
-            <div class="mb-4">
-              <label class="form-label">Category</label>
-              <div class="d-flex flex-column gap-1">
-                <a href="{{ url_for('products.list_products', q=search, sort=sort) }}"
-                   class="sidebar-link {% if not current_category %}active{% endif %}">
-                  🛒 All Products
-                </a>
-                {% for cat in categories %}
-                  <a href="{{ url_for('products.list_products', category=cat.category_id, q=search, sort=sort) }}"
-                     class="sidebar-link {% if current_category==cat.category_id %}active{% endif %}">
-                    🍃 {{ cat.name }}
-                    <span class="ms-auto" style="font-size:.78rem;font-family:var(--font-mono);color:var(--c-muted);">
-                      {{ cat.products.count() }}
+            <!-- Search stays open: it's the entry point, not a refinement -->
+            <div class="mb-1">
+              <label class="form-label" for="q">Search</label>
+              <input type="text" id="q" name="q" class="form-control"
+                     placeholder="Product or ingredient…" value="{{ f.search }}"
+                     style="border-radius:var(--radius-lg);">
+            </div>
+
+            <!-- Concerns — the primary skincare filter, open by default -->
+            <details class="filter-group" open>
+              <summary>
+                Concerns
+                {% if f.concern_ids %}<span class="filter-count">{{ f.concern_ids|length }}</span>{% endif %}
+              </summary>
+              <div class="filter-group-body d-flex flex-wrap gap-1">
+                {% for c in concerns %}
+                  <label style="position:relative;margin:0;">
+                    <input class="chip-check" type="checkbox" name="concern"
+                           value="{{ c.concern_id }}"
+                           {% if c.concern_id in f.concern_ids %}checked{% endif %}>
+                    <span class="filter-chip" style="font-size:.74rem;padding:.25rem .65rem;">
+                      {{ c.name }}
                     </span>
-                  </a>
+                  </label>
                 {% endfor %}
               </div>
+            </details>
+
+            <!-- Skin type -->
+            <details class="filter-group" {% if f.skin_type_id %}open{% endif %}>
+              <summary>
+                Skin type
+                {% if f.skin_type_id %}<span class="filter-count">1</span>{% endif %}
+              </summary>
+              <div class="filter-group-body">
+                <select name="skin_type" class="form-select" aria-label="Skin type">
+                  <option value="">Any skin type</option>
+                  {% for s in skin_types %}
+                    <option value="{{ s.skin_type_id }}"
+                            {% if f.skin_type_id == s.skin_type_id %}selected{% endif %}>
+                      {{ s.name }}
+                    </option>
+                  {% endfor %}
+                </select>
+              </div>
+            </details>
+
+            <!-- Key ingredient -->
+            <details class="filter-group" {% if f.ingredient_ids %}open{% endif %}>
+              <summary>
+                Key ingredient
+                {% if f.ingredient_ids %}<span class="filter-count">{{ f.ingredient_ids|length }}</span>{% endif %}
+              </summary>
+              <div class="filter-group-body d-flex flex-wrap gap-1">
+                {% for i in ingredients %}
+                  <label style="position:relative;margin:0;">
+                    <input class="chip-check" type="checkbox" name="ingredient"
+                           value="{{ i.ingredient_id }}"
+                           {% if i.ingredient_id in f.ingredient_ids %}checked{% endif %}>
+                    <span class="filter-chip" style="font-size:.74rem;padding:.25rem .65rem;">
+                      {{ i.name }}
+                    </span>
+                  </label>
+                {% endfor %}
+              </div>
+            </details>
+
+            <!-- Category -->
+            <details class="filter-group" {% if f.category_id %}open{% endif %}>
+              <summary>
+                Category
+                {% if f.category_id %}<span class="filter-count">1</span>{% endif %}
+              </summary>
+              <div class="filter-group-body">
+                <select name="category" id="category" class="form-select" aria-label="Category">
+                  <option value="">All categories</option>
+                  {% for cat in categories %}
+                    <option value="{{ cat.category_id }}"
+                            {% if f.category_id == cat.category_id %}selected{% endif %}>{{ cat.name }}</option>
+                    {% for child in cat.children %}
+                      <option value="{{ child.category_id }}"
+                              {% if f.category_id == child.category_id %}selected{% endif %}>
+                        &nbsp;&nbsp;— {{ child.name }}
+                      </option>
+                    {% endfor %}
+                  {% endfor %}
+                </select>
+              </div>
+            </details>
+
+            <!-- Product type & routine step -->
+            <details class="filter-group" {% if f.product_type or f.routine_step %}open{% endif %}>
+              <summary>
+                Type &amp; step
+                {% set ts = (1 if f.product_type else 0) + (1 if f.routine_step else 0) %}
+                {% if ts %}<span class="filter-count">{{ ts }}</span>{% endif %}
+              </summary>
+              <div class="filter-group-body">
+                <label class="form-label" for="type">Product type</label>
+                <select name="type" id="type" class="form-select mb-3">
+                  <option value="">Any type</option>
+                  {% for t in product_types %}
+                    <option value="{{ t }}" {% if f.product_type == t %}selected{% endif %}>{{ t }}</option>
+                  {% endfor %}
+                </select>
+
+                <label class="form-label" for="step">Routine step</label>
+                <select name="step" id="step" class="form-select">
+                  <option value="">Any step</option>
+                  {% for num, label in routine_steps.items() %}
+                    <option value="{{ num }}" {% if f.routine_step == num %}selected{% endif %}>
+                      {{ num }}. {{ label }}
+                    </option>
+                  {% endfor %}
+                </select>
+              </div>
+            </details>
+
+            <!-- Brand -->
+            <details class="filter-group" {% if f.brand_ids %}open{% endif %}>
+              <summary>
+                Brand
+                {% if f.brand_ids %}<span class="filter-count">{{ f.brand_ids|length }}</span>{% endif %}
+              </summary>
+              <div class="filter-group-body d-flex flex-column gap-1">
+                {% for b in brands %}
+                  <label class="d-flex align-items-center gap-2"
+                         style="font-size:.85rem;font-weight:600;color:var(--c-muted);margin:0;cursor:pointer;">
+                    <input type="checkbox" name="brand" value="{{ b.brand_id }}"
+                           {% if b.brand_id in f.brand_ids %}checked{% endif %}
+                           style="accent-color:var(--c-primary);">
+                    {{ b.name }}
+                  </label>
+                {% endfor %}
+              </div>
+            </details>
+
+            <!-- Claims -->
+            <details class="filter-group" {% if f.claim_keys %}open{% endif %}>
+              <summary>
+                Formulation
+                {% if f.claim_keys %}<span class="filter-count">{{ f.claim_keys|length }}</span>{% endif %}
+              </summary>
+              <div class="filter-group-body d-flex flex-wrap gap-1">
+                {% for key, label in claims.items() %}
+                  <label style="position:relative;margin:0;">
+                    <input class="chip-check" type="checkbox" name="claim" value="{{ key }}"
+                           {% if key in f.claim_keys %}checked{% endif %}>
+                    <span class="filter-chip" style="font-size:.74rem;padding:.25rem .65rem;">
+                      {{ label }}
+                    </span>
+                  </label>
+                {% endfor %}
+              </div>
+            </details>
+
+            <!-- Price -->
+            <details class="filter-group"
+                     {% if f.min_price is not none or f.max_price is not none %}open{% endif %}>
+              <summary>
+                Price
+                {% if f.min_price is not none or f.max_price is not none %}
+                  <span class="filter-count">1</span>
+                {% endif %}
+              </summary>
+              <div class="filter-group-body d-flex gap-2">
+                <input type="number" step="0.01" min="0" name="min_price" class="form-control"
+                       aria-label="Minimum price" placeholder="Min"
+                       value="{{ f.min_price if f.min_price is not none else '' }}">
+                <input type="number" step="0.01" min="0" name="max_price" class="form-control"
+                       aria-label="Maximum price" placeholder="Max"
+                       value="{{ f.max_price if f.max_price is not none else '' }}">
+              </div>
+            </details>
+
+            <!-- Availability -->
+            <details class="filter-group" {% if toggles_on %}open{% endif %}>
+              <summary>
+                Availability
+                {% if toggles_on %}<span class="filter-count">{{ toggles_on }}</span>{% endif %}
+              </summary>
+              <div class="filter-group-body d-flex flex-column gap-2">
+                {% for name, label, checked in [
+                     ('in_stock', 'In stock only', f.in_stock),
+                     ('on_sale',  'On sale',       f.on_sale),
+                     ('spf',      'Has SPF',       f.spf_only)] %}
+                  <label class="d-flex align-items-center gap-2"
+                         style="font-size:.85rem;font-weight:600;color:var(--c-muted);margin:0;cursor:pointer;">
+                    <input type="checkbox" name="{{ name }}" value="1"
+                           {% if checked %}checked{% endif %} style="accent-color:var(--c-primary);">
+                    {{ label }}
+                  </label>
+                {% endfor %}
+              </div>
+            </details>
+
+            <!-- Sort stays open: changed far more often than it's refined -->
+            <div class="mt-3 mb-3">
+              <label class="form-label" for="sort">Sort by</label>
+              <select name="sort" id="sort" class="form-select">
+                {% for key, label in sorts.items() %}
+                  <option value="{{ key }}" {% if f.sort == key %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
             </div>
 
-            <!-- Sort -->
-            <div>
-              <label class="form-label">Sort by</label>
-              <select name="sort" class="form-select" onchange="this.form.submit()">
-                <option value="newest"     {% if sort=='newest'     %}selected{% endif %}>🆕 Newest First</option>
-                <option value="price_asc"  {% if sort=='price_asc'  %}selected{% endif %}>💰 Price: Low to High</option>
-                <option value="price_desc" {% if sort=='price_desc' %}selected{% endif %}>💎 Price: High to Low</option>
-              </select>
-              <input type="hidden" name="category" value="{{ current_category or '' }}">
-            </div>
-          </form>
+            <button type="submit" class="btn btn-primary w-100">
+              <i class="bi bi-search me-1"></i> Apply filters
+            </button>
+
+          </div>
         </div>
-      </div>
+      </form>
     </div>
 
-    <!-- Product Grid -->
+    <!-- ── Product Grid ────────────────────────────────────────────────────── -->
     <div class="col-12 col-lg-9">
       {% if products.items %}
         <div class="row row-cols-2 row-cols-sm-2 row-cols-md-3 g-3">
@@ -88,14 +274,14 @@
           {% endfor %}
         </div>
 
-        <!-- Pagination -->
         {% if products.pages > 1 %}
         <div class="d-flex justify-content-center mt-5">
           <ul class="pagination">
+            {% set page_args = request.args.to_dict(flat=False) %}
             {% if products.has_prev %}
               <li class="page-item">
                 <a class="page-link" href="{{ url_for('products.list_products',
-                   page=products.prev_num, category=current_category, q=search, sort=sort) }}">
+                   **dict(page_args, page=products.prev_num)) }}">
                   <i class="bi bi-chevron-left"></i>
                 </a>
               </li>
@@ -104,7 +290,7 @@
               {% if num %}
                 <li class="page-item {% if num==products.page %}active{% endif %}">
                   <a class="page-link" href="{{ url_for('products.list_products',
-                     page=num, category=current_category, q=search, sort=sort) }}">{{ num }}</a>
+                     **dict(page_args, page=num)) }}">{{ num }}</a>
                 </li>
               {% else %}
                 <li class="page-item disabled"><span class="page-link">…</span></li>
@@ -113,7 +299,7 @@
             {% if products.has_next %}
               <li class="page-item">
                 <a class="page-link" href="{{ url_for('products.list_products',
-                   page=products.next_num, category=current_category, q=search, sort=sort) }}">
+                   **dict(page_args, page=products.next_num)) }}">
                   <i class="bi bi-chevron-right"></i>
                 </a>
               </li>
@@ -125,8 +311,8 @@
       {% else %}
         <div class="empty-state">
           <div class="icon">🔍</div>
-          <h4 style="color:var(--c-text);margin-bottom:.5rem;">No products found</h4>
-          <p>Try adjusting your filters or search for something else.</p>
+          <h4 style="color:var(--c-text);margin-bottom:.5rem;">No products match those filters</h4>
+          <p>Try removing a concern or ingredient — combining several narrows things quickly.</p>
           <a href="{{ url_for('products.list_products') }}" class="btn btn-primary mt-2">
             <i class="bi bi-arrow-left me-1"></i> Browse all products
           </a>

@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block title %}Skin Profile{% endblock %}
+
+{% block content %}
+<div class="page-container" style="max-width:820px;">
+
+  <div class="mb-4">
+    <p class="section-title mb-1">Account</p>
+    <h2 style="font-weight:800;margin:0;">Your skin profile</h2>
+    <p class="mt-2" style="max-width:620px;">
+      This drives your recommendations. If you mark yourself sensitive we only
+      suggest fragrance-free formulas.
+    </p>
+  </div>
+
+  {% include "account/_nav.html" %}
+
+  <form method="post" action="{{ url_for('account.skin_profile') }}">
+    <div class="card mb-3" style="border-radius:var(--radius-xl);">
+      <div class="card-body p-4">
+
+        <!-- Skin type -->
+        <div class="mb-4">
+          <label class="form-label">What's your skin type?</label>
+          <div class="row row-cols-2 row-cols-md-3 g-2">
+            {% for s in skin_types %}
+              <div class="col">
+                <label style="position:relative;display:block;margin:0;cursor:pointer;">
+                  <input class="chip-check" type="radio" name="skin_type_id"
+                         value="{{ s.skin_type_id }}"
+                         {% if profile and profile.skin_type_id == s.skin_type_id %}checked{% endif %}>
+                  <span class="filter-chip d-block text-center" style="padding:.7rem .5rem;">
+                    <span style="display:block;font-size:1.3rem;">{{ s.icon or '•' }}</span>
+                    {{ s.name }}
+                  </span>
+                </label>
+                {% if s.description %}
+                  <div style="font-size:.72rem;color:var(--c-muted);text-align:center;margin-top:.25rem;">
+                    {{ s.description }}
+                  </div>
+                {% endif %}
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Concerns -->
+        <div class="mb-4">
+          <label class="form-label">What are you working on? (pick any)</label>
+          {% set chosen = profile.concerns|map(attribute='concern_id')|list if profile else [] %}
+          <div class="d-flex flex-wrap gap-2">
+            {% for c in concerns %}
+              <label style="position:relative;margin:0;cursor:pointer;">
+                <input class="chip-check" type="checkbox" name="concern_ids"
+                       value="{{ c.concern_id }}"
+                       {% if c.concern_id in chosen %}checked{% endif %}>
+                <span class="filter-chip">{{ c.icon or '' }} {{ c.name }}</span>
+              </label>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div class="row g-3 mb-4">
+          <div class="col-12 col-sm-6">
+            <label class="form-label" for="age_range">Age range</label>
+            <select class="form-select" id="age_range" name="age_range">
+              <option value="">Prefer not to say</option>
+              {% for a in age_ranges %}
+                <option value="{{ a }}" {% if profile and profile.age_range == a %}selected{% endif %}>
+                  {{ a }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-12 col-sm-6">
+            <label class="form-label" for="skin_tone">Skin tone</label>
+            <select class="form-select" id="skin_tone" name="skin_tone">
+              <option value="">Prefer not to say</option>
+              {% for t in skin_tones %}
+                <option value="{{ t }}" {% if profile and profile.skin_tone == t %}selected{% endif %}>
+                  {{ t }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <div class="mb-4">
+          <label class="d-flex align-items-center gap-2"
+                 style="font-weight:700;font-size:.9rem;cursor:pointer;">
+            <input type="checkbox" name="is_sensitive" value="1"
+                   {% if profile and profile.is_sensitive %}checked{% endif %}
+                   style="accent-color:var(--c-primary);width:18px;height:18px;">
+            My skin reacts easily
+          </label>
+          <div style="font-size:.8rem;color:var(--c-muted);margin-left:1.7rem;">
+            We'll only recommend fragrance-free formulas.
+          </div>
+        </div>
+
+        <div class="mb-4">
+          <label class="form-label" for="allergies">Ingredients you avoid</label>
+          <input type="text" class="form-control" id="allergies" name="allergies"
+                 placeholder="e.g. fragrance, essential oils, denatured alcohol"
+                 value="{{ profile.allergies if profile else '' }}">
+          <div style="font-size:.78rem;color:var(--c-muted);margin-top:.35rem;">
+            We show this back to you on recommendations — always check the full INCI
+            list on the product page before buying.
+          </div>
+        </div>
+
+        <div class="mb-4">
+          <label class="form-label" for="notes">Anything else</label>
+          <textarea class="form-control" id="notes" name="notes" rows="3"
+                    placeholder="Currently on prescription tretinoin, pregnant, post-procedure…">{{ profile.notes if profile else '' }}</textarea>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-lg">
+          <i class="bi bi-check-lg me-1"></i> Save profile &amp; see matches
+        </button>
+      </div>
+    </div>
+  </form>
+
+  <div class="alert alert-info d-block">
+    <strong><i class="bi bi-info-circle-fill me-1"></i>A note on advice</strong>
+    <div style="font-size:.88rem;margin-top:.25rem;">
+      These recommendations are based on product formulation, not a diagnosis. For
+      persistent acne, rosacea, eczema or any changing mole, see a dermatologist.
+    </div>
+  </div>
+
+</div>
+{% endblock %}

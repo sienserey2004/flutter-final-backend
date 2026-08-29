@@ -1,86 +1,353 @@
-{% extends "base.html" %} {% block content %}
-<div class="d-flex" style="min-height: calc(100vh - var(--nav-h))">
-  <!-- Admin sidebar -->
-  <aside class="sidebar d-none d-lg-block">
-    <p class="sidebar-section-label">Overview</p>
-    <a
-      href="{{ url_for('admin.dashboard') }}"
-      class="sidebar-link {% if request.endpoint=='admin.dashboard' %}active{% endif %}"
-    >
-      <i class="bi bi-grid-1x2"></i> Dashboard
-    </a>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <script>
+    (() => {
+      'use strict';
+      let stored = null;
+      try { stored = localStorage.getItem('lte-theme'); } catch { /* private mode */ }
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const resolved = (stored === 'dark' || stored === 'light') ? stored : (prefersDark ? 'dark' : 'light');
+      document.documentElement.setAttribute('data-bs-theme', resolved);
+    })();
+  </script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Admin{% endblock %} — {{ STORE_NAME }}</title>
 
-    <p class="sidebar-section-label mt-3">Catalog</p>
-    <a
-      href="{{ url_for('admin.categories') }}"
-      class="sidebar-link {% if 'categor' in request.endpoint %}active{% endif %}"
-    >
-      <i class="bi bi-folder"></i> Categories
-    </a>
-    <a
-      href="{{ url_for('admin.products') }}"
-      class="sidebar-link {% if 'product' in request.endpoint %}active{% endif %}"
-    >
-      <i class="bi bi-box-seam"></i> Products
-    </a>
-    <a
-      href="{{ url_for('admin.inventory') }}"
-      class="sidebar-link {% if request.endpoint=='admin.inventory' %}active{% endif %}"
-    >
-      <i class="bi bi-list-check"></i> Inventory
-    </a>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,300..900;1,300..900&display=swap">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/overlayscrollbars@2.11.0/styles/overlayscrollbars.min.css" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@4.1.0/dist/css/adminlte.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin-lte-skin.css') }}">
+  {% block head %}{% endblock %}
+</head>
+<body class="layout-fixed sidebar-expand-lg bg-body-tertiary">
+<div class="app-wrapper">
 
-    <p class="sidebar-section-label mt-3">Sales</p>
-    <a
-      href="{{ url_for('admin.orders') }}"
-      class="sidebar-link {% if 'order' in request.endpoint %}active{% endif %}"
-    >
-      <i class="bi bi-receipt"></i> Orders
-    </a>
-    <a
-      href="{{ url_for('admin.coupons') }}"
-      class="sidebar-link {% if 'coupon' in request.endpoint %}active{% endif %}"
-    >
-      <i class="bi bi-ticket-perforated"></i> Coupons
-    </a>
-    <a
-      href="{{ url_for('admin.promotions') }}"
-      class="sidebar-link {% if 'promotion' in request.endpoint %}active{% endif %}"
-    >
-      <i class="bi bi-megaphone"></i> Promotions
-    </a>
+  <!-- ── Header ─────────────────────────────────────────────────────────────── -->
+  <nav class="app-header navbar navbar-expand bg-body">
+    <div class="container-fluid">
+      <ul class="navbar-nav">
+        <li class="nav-item">
+          <a class="nav-link" data-lte-toggle="sidebar" href="#" role="button" aria-label="Toggle sidebar">
+            <i class="bi bi-list"></i>
+          </a>
+        </li>
+        <li class="nav-item d-none d-md-block">
+          <a href="{{ url_for('main.index') }}" class="nav-link">
+            <i class="bi bi-arrow-left me-1" aria-hidden="true"></i> Back to shop
+          </a>
+        </li>
+      </ul>
 
-    <p class="sidebar-section-label mt-3">Payments</p>
-    <a
-      href="{{ url_for('admin.bakong_merchants') }}"
-      class="sidebar-link {% if 'bakong_merchant' in request.endpoint %}active{% endif %}"
-    >
-      <i class="bi bi-shop"></i> Bakong Merchants
-    </a>
-    <a
-      href="{{ url_for('admin.payment_transactions') }}"
-      class="sidebar-link {% if 'payment_transaction' in request.endpoint %}active{% endif %}"
-    >
-      <i class="bi bi-credit-card"></i> Transactions
-    </a>
+      <ul class="navbar-nav ms-auto">
+        <!-- Messages (Mailbox: customers waiting on a sold-out product) -->
+        <li class="nav-item dropdown">
+          <a class="nav-link" data-bs-toggle="dropdown" href="#"
+             aria-label="Stock-alert messages: {{ admin_pending_alerts_count }} waiting">
+            <i class="bi bi-envelope"></i>
+            {% if admin_pending_alerts_count %}
+              <span class="navbar-badge badge text-bg-danger">{{ admin_pending_alerts_count }}</span>
+            {% endif %}
+          </a>
+          <div class="dropdown-menu dropdown-menu-lg dropdown-menu-end">
+            <span class="dropdown-item dropdown-header">
+              {{ admin_pending_alerts_count }} waiting on restock
+            </span>
+            <div class="dropdown-divider"></div>
+            {% for alert in admin_pending_alerts_preview %}
+              <a href="{{ url_for('admin.stock_alerts') }}" class="dropdown-item">
+                <div class="d-flex">
+                  <div class="flex-shrink-0">
+                    <div class="brand-mark" style="width:36px;height:36px;font-size:.8rem;">
+                      {{ alert.email[0].upper() }}
+                    </div>
+                  </div>
+                  <div class="flex-grow-1 ms-2">
+                    <p class="dropdown-item-title">{{ alert.email }}</p>
+                    <p class="fs-7">{{ alert.variant.product.name }} — {{ alert.variant.label() }}</p>
+                    <p class="fs-7 text-secondary">
+                      <i class="bi bi-clock-fill me-1"></i> {{ alert.created_at.strftime('%b %d') }}
+                    </p>
+                  </div>
+                </div>
+              </a>
+              <div class="dropdown-divider"></div>
+            {% else %}
+              <span class="dropdown-item text-secondary">Nobody is waiting right now.</span>
+              <div class="dropdown-divider"></div>
+            {% endfor %}
+            <a href="{{ url_for('admin.stock_alerts') }}" class="dropdown-item dropdown-footer">
+              Open Mailbox
+            </a>
+          </div>
+        </li>
 
-    <p class="sidebar-section-label mt-3">Users</p>
-    <a
-      href="{{ url_for('admin.users') }}"
-      class="sidebar-link {% if request.endpoint=='admin.users' %}active{% endif %}"
-    >
-      <i class="bi bi-people"></i> Users
-    </a>
+        <!-- Notifications: things needing attention -->
+        <li class="nav-item dropdown">
+          {% set admin_notif_total = admin_low_stock_count + admin_expiring_count + admin_open_returns_count %}
+          <a class="nav-link" data-bs-toggle="dropdown" href="#"
+             aria-label="Notifications: {{ admin_notif_total }}">
+            <i class="bi bi-bell-fill"></i>
+            {% if admin_notif_total %}
+              <span class="navbar-badge badge text-bg-warning">{{ admin_notif_total }}</span>
+            {% endif %}
+          </a>
+          <div class="dropdown-menu dropdown-menu-lg dropdown-menu-end">
+            <span class="dropdown-item dropdown-header">Needs attention</span>
+            <div class="dropdown-divider"></div>
+            {% if admin_low_stock_count %}
+              <a href="{{ url_for('admin.inventory') }}" class="dropdown-item">
+                <i class="bi bi-exclamation-triangle me-2 text-warning"></i>{{ admin_low_stock_count }} variant(s) low on stock
+              </a>
+              <div class="dropdown-divider"></div>
+            {% endif %}
+            {% if admin_expiring_count %}
+              <a href="{{ url_for('admin.inventory') }}" class="dropdown-item">
+                <i class="bi bi-calendar-x me-2 text-warning"></i>{{ admin_expiring_count }} batch(es) expiring soon
+              </a>
+              <div class="dropdown-divider"></div>
+            {% endif %}
+            {% if admin_open_returns_count %}
+              <a href="{{ url_for('admin.returns') }}" class="dropdown-item">
+                <i class="bi bi-arrow-return-left me-2 text-warning"></i>{{ admin_open_returns_count }} return(s) awaiting review
+              </a>
+              <div class="dropdown-divider"></div>
+            {% endif %}
+            {% if not admin_notif_total %}
+              <span class="dropdown-item text-secondary">All caught up.</span>
+              <div class="dropdown-divider"></div>
+            {% endif %}
+            <a href="{{ url_for('admin.dashboard') }}" class="dropdown-item dropdown-footer">Open dashboard</a>
+          </div>
+        </li>
 
-    <hr class="divider" style="margin: 1.5rem 0.75rem" />
-    <a href="{{ url_for('main.index') }}" class="sidebar-link">
-      <i class="bi bi-arrow-left"></i> Back to shop
-    </a>
+        <li class="nav-item">
+          <a class="nav-link" href="#" data-lte-toggle="fullscreen" aria-label="Toggle fullscreen">
+            <i data-lte-icon="maximize" class="bi bi-arrows-fullscreen"></i>
+            <i data-lte-icon="minimize" class="bi bi-fullscreen-exit d-none"></i>
+          </a>
+        </li>
+
+        <li class="nav-item dropdown">
+          <a class="nav-link" href="#" id="bd-theme" aria-label="Toggle color scheme"
+             data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="bi bi-sun-fill" data-lte-theme-icon="light"></i>
+            <i class="bi bi-moon-fill d-none" data-lte-theme-icon="dark"></i>
+            <i class="bi bi-circle-half d-none" data-lte-theme-icon="auto"></i>
+          </a>
+          <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="bd-theme" style="--bs-dropdown-min-width: 8rem">
+            <li><button type="button" class="dropdown-item d-flex align-items-center" data-bs-theme-value="light">
+              <i class="bi bi-sun-fill me-2"></i>Light</button></li>
+            <li><button type="button" class="dropdown-item d-flex align-items-center" data-bs-theme-value="dark">
+              <i class="bi bi-moon-fill me-2"></i>Dark</button></li>
+            <li><button type="button" class="dropdown-item d-flex align-items-center active" data-bs-theme-value="auto">
+              <i class="bi bi-circle-half me-2"></i>Auto</button></li>
+          </ul>
+        </li>
+
+        <!-- User menu -->
+        <li class="nav-item dropdown user-menu">
+          <a href="#" class="nav-link dropdown-toggle d-flex align-items-center gap-2" data-bs-toggle="dropdown">
+            <span class="brand-mark">{{ current_user.name[0].upper() }}</span>
+            <span class="d-none d-md-inline">{{ current_user.name }}</span>
+          </a>
+          <ul class="dropdown-menu dropdown-menu-lg dropdown-menu-end">
+            <li class="user-header text-bg-primary">
+              <span class="brand-mark" style="width:56px;height:56px;font-size:1.4rem;">
+                {{ current_user.name[0].upper() }}
+              </span>
+              <p>{{ current_user.name }}<small>{{ current_user.email }}</small></p>
+            </li>
+            <li class="user-footer">
+              <a href="{{ url_for('main.index') }}" class="btn btn-outline-secondary">Storefront</a>
+              <form action="{{ url_for('auth.logout') }}" method="post" class="d-inline float-end">
+                <button type="submit" class="btn btn-outline-danger">Sign out</button>
+              </form>
+            </li>
+          </ul>
+        </li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- ── Sidebar ────────────────────────────────────────────────────────────── -->
+  <aside class="app-sidebar shadow" data-bs-theme="dark">
+    <div class="sidebar-brand">
+      <a href="{{ url_for('admin.dashboard') }}" class="brand-link">
+        <span class="brand-mark">✦</span>
+        <span class="brand-text">{{ STORE_NAME }}</span>
+      </a>
+    </div>
+
+    <div class="sidebar-wrapper">
+      <nav class="mt-2" aria-label="Admin navigation">
+        {% macro nav_item(endpoint_match, url, icon, label, badge=none) %}
+          <li class="nav-item">
+            <a href="{{ url }}" class="nav-link {% if endpoint_match %}active{% endif %}">
+              <i class="nav-icon bi bi-{{ icon }}"></i>
+              <p>{{ label }}
+                {% if badge %}<span class="nav-badge badge text-bg-danger ms-auto">{{ badge }}</span>{% endif %}
+              </p>
+            </a>
+          </li>
+        {% endmacro %}
+        <ul class="nav sidebar-menu flex-column">
+          <li class="nav-header">OVERVIEW</li>
+          {{ nav_item(request.endpoint=='admin.dashboard', url_for('admin.dashboard'), 'grid-1x2', 'Dashboard') }}
+
+          <li class="nav-header">CATALOG</li>
+          {{ nav_item('brand' in request.endpoint, url_for('admin.brands'), 'award', 'Brands') }}
+          {{ nav_item('categor' in request.endpoint, url_for('admin.categories'), 'folder', 'Categories') }}
+          {{ nav_item('product' in request.endpoint or 'variant' in request.endpoint, url_for('admin.products'), 'box-seam', 'Products') }}
+          {{ nav_item('bundle' in request.endpoint, url_for('admin.bundles'), 'gift', 'Routine Kits') }}
+
+          <li class="nav-header">SKINCARE DATA</li>
+          {{ nav_item('ingredient' in request.endpoint, url_for('admin.ingredients'), 'droplet', 'Ingredients') }}
+          {{ nav_item(kind=='skin-types', url_for('admin.taxonomy', kind='skin-types'), 'person-bounding-box', 'Skin Types') }}
+          {{ nav_item(kind=='concerns', url_for('admin.taxonomy', kind='concerns'), 'bullseye', 'Skin Concerns') }}
+
+          <li class="nav-header">INVENTORY</li>
+          {{ nav_item(request.endpoint=='admin.inventory', url_for('admin.inventory'), 'list-check', 'Stock & Expiry') }}
+          {{ nav_item('stock_alert' in request.endpoint or 'notify' in request.endpoint, url_for('admin.stock_alerts'), 'bell', 'Stock Alerts (Mailbox)', badge=admin_pending_alerts_count) }}
+
+          <li class="nav-header">SALES</li>
+          {{ nav_item('order' in request.endpoint or 'tracking' in request.endpoint, url_for('admin.orders'), 'receipt', 'Orders') }}
+          {{ nav_item('return' in request.endpoint, url_for('admin.returns'), 'arrow-return-left', 'Returns', badge=admin_open_returns_count) }}
+          {{ nav_item(request.endpoint=='admin.subscriptions', url_for('admin.subscriptions'), 'arrow-repeat', 'Subscriptions') }}
+          {{ nav_item('shipping_method' in request.endpoint, url_for('admin.shipping_methods'), 'truck', 'Shipping Methods') }}
+          {{ nav_item('coupon' in request.endpoint, url_for('admin.coupons'), 'ticket-perforated', 'Coupons') }}
+          {{ nav_item('promotion' in request.endpoint, url_for('admin.promotions'), 'megaphone', 'Promotions') }}
+
+          <li class="nav-header">PAYMENTS</li>
+          {{ nav_item('bakong_merchant' in request.endpoint, url_for('admin.bakong_merchants'), 'shop', 'Bakong Merchants') }}
+          {{ nav_item('payment_transaction' in request.endpoint or 'qr' in request.endpoint, url_for('admin.payment_transactions'), 'credit-card', 'Transactions') }}
+
+          <li class="nav-header">USERS</li>
+          {{ nav_item('user' in request.endpoint, url_for('admin.users'), 'people', 'Customers') }}
+        </ul>
+      </nav>
+    </div>
+    <script>
+      (() => {
+        // Runs synchronously during HTML parsing, before the sidebar paints —
+        // sets a best-effort scroll position immediately so there's nothing
+        // to jump from. The bottom-of-page script re-asserts the authoritative
+        // value (and reveals the sidebar) once OverlayScrollbars is set up.
+        try {
+          const saved = sessionStorage.getItem('admin-sidebar-scroll');
+          if (saved !== null) document.querySelector('.sidebar-wrapper').scrollTop = parseInt(saved, 10) || 0;
+        } catch { /* sessionStorage unavailable (private mode) */ }
+      })();
+    </script>
   </aside>
 
-  <!-- Main content area -->
-  <div style="flex: 1; min-width: 0; padding: 2rem">
-    {% block admin_content %}{% endblock %}
-  </div>
+  <!-- ── Main ───────────────────────────────────────────────────────────────── -->
+  <main class="app-main">
+    <!-- Everything the admin-nav.js router swaps on a sidebar click lives in
+         this one region — the sidebar/header/footer outside it are never
+         touched by that swap, which is what keeps the sidebar's scroll
+         position intact instead of resetting on every navigation. -->
+    <div id="app-main-region">
+      <div class="app-content-header">
+        <div class="container-fluid">
+          <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-0">
+              <li class="breadcrumb-item"><a href="{{ url_for('admin.dashboard') }}">Admin</a></li>
+              <li class="breadcrumb-item active" aria-current="page">{% block breadcrumb %}{{ self.title() }}{% endblock %}</li>
+            </ol>
+          </nav>
+        </div>
+      </div>
+
+      {% with msgs = get_flashed_messages(with_categories=true) %}
+        {% if msgs %}
+          <div class="container-fluid pt-3">
+            {% for cat, msg in msgs %}
+              <div class="alert alert-{{ cat }} alert-dismissible fade show" role="alert">
+                <i class="bi bi-{% if cat=='success' %}check-circle-fill{% elif cat=='danger' %}x-circle-fill{% elif cat=='warning' %}exclamation-triangle-fill{% else %}info-circle-fill{% endif %} me-2"></i>
+                {{ msg }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      <div class="app-content">
+        <div class="container-fluid">
+          {% block admin_content %}{% endblock %}
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="app-footer">
+    <div class="float-end d-none d-sm-inline">Aurea Skin Admin</div>
+    <strong>&copy; {{ now().year }} {{ STORE_NAME }}</strong> — internal use only.
+  </footer>
 </div>
-{% endblock %}
+
+<script src="https://cdn.jsdelivr.net/npm/overlayscrollbars@2.11.0/browser/overlayscrollbars.browser.es6.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/admin-lte@4.1.0/dist/js/adminlte.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    var sidebarWrapper = document.querySelector('.sidebar-wrapper');
+    try {
+      var isMobile = window.innerWidth <= 992;
+      var scrollEl = sidebarWrapper;
+      var scrollEventEl = sidebarWrapper;
+      if (sidebarWrapper && window.OverlayScrollbarsGlobal?.OverlayScrollbars !== undefined && !isMobile) {
+        var osInstance = window.OverlayScrollbarsGlobal.OverlayScrollbars(sidebarWrapper, {
+          scrollbars: { theme: 'os-theme-light', autoHide: 'leave', clickScroll: true }
+        });
+        // OverlayScrollbars moves the real scrolling onto its own internal
+        // viewport element — sidebarWrapper itself no longer scrolls once it's
+        // wrapped, so scroll position must be read/written on these instead.
+        // (This also re-asserts the position the inline head-of-sidebar script
+        // already set, in case wrapping it reset it to 0.)
+        var osElements = osInstance.elements();
+        scrollEl = osElements.scrollOffsetElement;
+        scrollEventEl = osElements.scrollEventElement;
+      }
+
+      // Every sidebar link is a full page reload (server-rendered app, not an
+      // SPA), so the browser has no memory of the sidebar's scroll position.
+      // Persist it ourselves so switching modules doesn't reset it to the top.
+      if (scrollEl && scrollEventEl) {
+        var STORAGE_KEY = 'admin-sidebar-scroll';
+        var saved = sessionStorage.getItem(STORAGE_KEY);
+        if (saved !== null) scrollEl.scrollTop = parseInt(saved, 10) || 0;
+
+        var flushPending = false;
+        var persist = function () {
+          sessionStorage.setItem(STORAGE_KEY, String(scrollEl.scrollTop));
+          flushPending = false;
+        };
+        scrollEventEl.addEventListener('scroll', function () {
+          if (flushPending) return;
+          flushPending = true;
+          requestAnimationFrame(persist);
+        }, { passive: true });
+        window.addEventListener('pagehide', persist);
+      }
+    } finally {
+      // Reveal the sidebar (hidden by CSS until now) no matter what — even if
+      // something above threw — so it can never get stuck invisible.
+      if (sidebarWrapper) sidebarWrapper.classList.add('scroll-ready');
+    }
+  });
+</script>
+<script src="{{ url_for('static', filename='js/admin-table.js') }}"></script>
+<script src="{{ url_for('static', filename='js/admin-nav.js') }}"></script>
+<!-- Page-specific scripts (e.g. dashboard.html's chart init) live down here,
+     outside #app-main-region — admin-nav.js swaps this container too and
+     re-executes whatever landed in it, on every sidebar navigation. -->
+<div id="app-page-scripts" hidden>
+  {% block scripts %}{% endblock %}
+</div>
+</body>
+</html>

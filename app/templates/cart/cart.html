@@ -25,26 +25,32 @@
             <div style="width:68px;height:68px;border-radius:var(--radius-lg);overflow:hidden;
                         flex-shrink:0;background:var(--c-primary-lt);
                         display:flex;align-items:center;justify-content:center;font-size:1.8rem;">
-              {% if item.variant.image %}
-                <img src="{{ item.variant.image }}" alt=""
+              {% if item.variant.image_url() %}
+                <img src="{{ item.variant.image_url() }}" alt=""
                      style="width:100%;height:100%;object-fit:cover;">
               {% else %}
-                🍃
+                ✧
               {% endif %}
             </div>
 
             <!-- Info -->
             <div style="flex:1;min-width:0;">
+              {% if item.variant.product.brand %}
+                <div style="font-size:.68rem;font-weight:800;letter-spacing:.09em;
+                            text-transform:uppercase;color:var(--c-muted);">
+                  {{ item.variant.product.brand.name }}
+                </div>
+              {% endif %}
               <a href="{{ url_for('products.detail', product_id=item.variant.product_id) }}"
                  style="font-weight:700;color:var(--c-text);font-size:.95rem;text-decoration:none;">
                 {{ item.variant.product.name }}
               </a>
-              {% if item.variant.size or item.variant.color %}
               <div style="font-size:.78rem;color:var(--c-muted);margin-top:.1rem;">
-                {% if item.variant.size %}{{ item.variant.size }}{% endif %}
-                {% if item.variant.color %} · {{ item.variant.color }}{% endif %}
+                {{ item.variant.label() }}
+                {% if item.variant.expiry_date %}
+                  · Best before {{ item.variant.expiry_date.strftime('%b %Y') }}
+                {% endif %}
               </div>
-              {% endif %}
               <div style="font-family:var(--font-mono);color:var(--c-orange);font-weight:600;margin-top:.25rem;font-size:.9rem;">
                 ${{ "%.2f"|format(item.variant.price|float) }} each
               </div>
@@ -141,10 +147,15 @@
     <div class="empty-state">
       <div class="icon">🛒</div>
       <h4 style="color:var(--c-text);margin-bottom:.5rem;">Your cart is empty</h4>
-      <p>Looks like you haven't added any fresh produce yet!</p>
-      <a href="{{ url_for('products.list_products') }}" class="btn btn-primary btn-lg mt-2">
-        <i class="bi bi-basket2 me-2"></i>Start Shopping
-      </a>
+      <p>Not sure where to start? Tell us about your skin and we'll build the routine.</p>
+      <div class="d-flex gap-2 justify-content-center flex-wrap mt-2">
+        <a href="{{ url_for('products.list_products') }}" class="btn btn-primary btn-lg">
+          <i class="bi bi-bag me-2"></i>Start shopping
+        </a>
+        <a href="{{ url_for('products.for_you') }}" class="btn btn-outline btn-lg">
+          <i class="bi bi-stars me-2"></i>Build my routine
+        </a>
+      </div>
     </div>
   {% endif %}
 

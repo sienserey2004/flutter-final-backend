@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Returns{% endblock %}
+
+{% block content %}
+<div class="page-container" style="max-width:900px;">
+
+  <div class="mb-4">
+    <p class="section-title mb-1">Account</p>
+    <h2 style="font-weight:800;margin:0;">Returns &amp; refunds</h2>
+    <p class="mt-2" style="max-width:640px;">
+      Reacted to something? Skin reactions are the most common reason people return
+      skincare, and we accept them — tell us what happened and we'll sort it out.
+    </p>
+  </div>
+
+  {% include "account/_nav.html" %}
+
+  {% if returns %}
+    <div class="card" style="border-radius:var(--radius-xl);">
+      <table class="table-min">
+        <thead>
+          <tr><th>Return</th><th>Order</th><th>Reason</th><th>Items</th>
+              <th>Refund</th><th>Status</th><th></th></tr>
+        </thead>
+        <tbody>
+          {% for r in returns %}
+          <tr>
+            <td class="text-mono">#{{ r.return_id }}</td>
+            <td>
+              <a href="{{ url_for('orders.detail', order_id=r.order_id) }}">#{{ r.order_id }}</a>
+            </td>
+            <td style="font-size:.85rem;">{{ r.reason }}</td>
+            <td class="text-mono">{{ r.items.count() }}</td>
+            <td class="text-mono">
+              {% if r.refund_amount is not none %}${{ "%.2f"|format(r.refund_amount|float) }}
+              {% else %}—{% endif %}
+            </td>
+            <td><span class="badge status-{{ r.status }}">{{ r.status }}</span></td>
+            <td>
+              <a href="{{ url_for('account.return_detail', return_id=r.return_id) }}"
+                 class="btn btn-outline btn-sm">View</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="empty-state">
+      <div class="icon">↩️</div>
+      <h4 style="color:var(--c-text);margin-bottom:.5rem;">No returns</h4>
+      <p>To start one, open a delivered order and choose "Request a return".</p>
+      <a href="{{ url_for('orders.my_orders') }}" class="btn btn-primary mt-2">View my orders</a>
+    </div>
+  {% endif %}
+
+</div>
+{% endblock %}

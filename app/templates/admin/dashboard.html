@@ -1,98 +1,223 @@
 {% extends "admin/base_admin.html" %}
-{% block title %}Admin Dashboard{% endblock %}
+{% import "admin/_macros.html" as m %}
+{% block title %}Dashboard{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/apexcharts@3.37.1/dist/apexcharts.css"
+      integrity="sha256-4MX+61mt9NVvvuPjUWdUdyfZfxSB1/Rf9WtqRHgG5S0=" crossorigin="anonymous">
+{% endblock %}
 
 {% block admin_content %}
-<p class="section-title">Admin</p>
-<h2 class="mb-4">Dashboard</h2>
 
 <!-- Stats -->
-<div class="row g-3 mb-4">
+<div class="row">
   {% set stat_items = [
-    ('Total Users',    stats.users,    'people',        ''),
-    ('Products',       stats.products, 'box-seam',      ''),
-    ('Orders',         stats.orders,   'receipt',       ''),
-    ('Revenue',        stats.revenue,  'currency-dollar','$'),
+    (stats.products, 'Products',  'box-seam',        'primary',   'admin.products'),
+    (stats.variants, 'Variants',  'layers',          'info',      none),
+    (stats.brands,   'Brands',    'award',           'secondary', 'admin.brands'),
+    (stats.users,    'Customers', 'people',          'success',   'admin.users'),
+    (stats.orders,   'Orders',    'receipt',         'warning',   'admin.orders'),
+    ('$' ~ '%.0f'|format(stats.revenue|float), 'Revenue', 'currency-dollar', 'dark', none),
   ] %}
-  {% for label, val, icon, prefix in stat_items %}
-  <div class="col-6 col-md-3">
-    <div class="stat-card">
-      <div style="color:var(--c-muted); font-size:1.25rem; margin-bottom:.5rem;">
-        <i class="bi bi-{{ icon }}"></i>
-      </div>
-      <div class="stat-value">{{ prefix }}{{ "%.0f"|format(val|float) if prefix=='$' else val }}</div>
-      <div class="stat-label">{{ label }}</div>
-    </div>
+  {% for value, label, icon, color, endpoint in stat_items %}
+  <div class="col-lg-2 col-6">
+    {{ m.small_box(value, label, icon, color, url_for(endpoint) if endpoint else none) }}
   </div>
   {% endfor %}
 </div>
 
-<!-- Order status row -->
-<div class="row g-3 mb-5">
-  {% for status, count in order_statuses.items() %}
-  <div class="col-6 col-sm-4 col-md-2">
-    <div class="card text-center p-3">
-      <div class="text-mono" style="font-size:1.4rem; font-weight:600;">{{ count }}</div>
-      <div>
-        <span class="badge status-{{ status }}">{{ status }}</span>
-      </div>
-    </div>
-  </div>
-  {% endfor %}
-</div>
-
-<!-- Quick links -->
-<div class="row g-3 mb-5">
-  {% set quick = [
-    ('New Product',   'admin.new_product',   'plus-circle'),
-    ('New Category',  'admin.new_category',  'folder-plus'),
-    ('New Coupon',    'admin.new_coupon',     'ticket-perforated'),
-    ('New Promotion', 'admin.new_promotion', 'megaphone'),
+<!-- Things needing attention -->
+<div class="row">
+  {% set alerts = [
+    (stats.low_stock,      'Low stock',        'exclamation-triangle', 'admin.inventory'),
+    (stats.expiring,       'Expiring soon',    'calendar-x',           'admin.inventory'),
+    (stats.open_returns,   'Open returns',     'arrow-return-left',    'admin.returns'),
+    (stats.pending_alerts, 'Waiting on stock', 'bell',                 'admin.stock_alerts'),
+    (stats.subscriptions,  'Active refills',   'arrow-repeat',         'admin.subscriptions'),
   ] %}
-  {% for label, endpoint, icon in quick %}
-  <div class="col-6 col-md-3">
-    <a href="{{ url_for(endpoint) }}" class="card d-flex align-items-center gap-2 p-3"
-       style="text-decoration:none; flex-direction:row;">
-      <i class="bi bi-{{ icon }}" style="font-size:1.1rem; color:var(--c-muted);"></i>
-      <span style="font-size:.875rem; font-weight:500;">{{ label }}</span>
+  {% for val, label, icon, endpoint in alerts %}
+  <div class="col-lg col-6">
+    <a href="{{ url_for(endpoint) }}" class="text-decoration-none">
+      {{ m.info_box(val, label, icon, 'danger' if val else 'secondary') }}
     </a>
   </div>
   {% endfor %}
 </div>
 
-<!-- Recent orders -->
-<div class="d-flex align-items-center justify-content-between mb-2">
-  <h5 class="mb-0">Recent Orders</h5>
-  <a href="{{ url_for('admin.orders') }}" style="font-size:.8rem; color:var(--c-muted);">View all →</a>
+<!-- Charts -->
+<div class="row">
+  <div class="col-lg-7">
+    <div class="card mb-4">
+      <div class="card-header"><h3 class="card-title">Orders &amp; revenue — last 6 months</h3></div>
+      <div class="card-body"><div id="trend-chart"></div></div>
+    </div>
+  </div>
+  <div class="col-lg-5">
+    <div class="card mb-4">
+      <div class="card-header"><h3 class="card-title">Orders by status</h3></div>
+      <div class="card-body"><div id="status-chart"></div></div>
+    </div>
+  </div>
 </div>
-<div class="card">
-  <table class="table-min">
-    <thead>
-      <tr>
-        <th>Order #</th>
-        <th>Customer</th>
-        <th>Date</th>
-        <th>Total</th>
-        <th>Status</th>
-        <th></th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for order in recent_orders %}
-      <tr>
-        <td class="text-mono" style="font-weight:500;">#{{ order.order_id }}</td>
-        <td>{{ order.user.name }}</td>
-        <td style="color:var(--c-muted); font-size:.8rem;">
-          {{ order.created_at.strftime('%b %d, %Y') }}
-        </td>
-        <td class="text-mono">${{ "%.2f"|format(order.total_amount|float) }}</td>
-        <td><span class="badge status-{{ order.status }}">{{ order.status }}</span></td>
-        <td>
-          <a href="{{ url_for('admin.order_detail', order_id=order.order_id) }}"
-             class="btn btn-ghost btn-sm">View →</a>
-        </td>
-      </tr>
+
+<!-- Quick links -->
+<div class="row">
+  <div class="col-12 mb-2">
+    {% set quick = [
+      ('New Product',    'admin.new_product',     'plus-circle'),
+      ('New Brand',      'admin.new_brand',       'award'),
+      ('New Ingredient', 'admin.new_ingredient',  'droplet'),
+      ('New Routine Kit','admin.new_bundle',      'gift'),
+      ('New Coupon',     'admin.new_coupon',      'ticket-perforated'),
+      ('New Promotion',  'admin.new_promotion',   'megaphone'),
+    ] %}
+    <div class="d-flex flex-wrap gap-2">
+      {% for label, endpoint, icon in quick %}
+        <a href="{{ url_for(endpoint) }}" class="btn btn-outline-secondary btn-sm">
+          <i class="bi bi-{{ icon }} me-1"></i>{{ label }}
+        </a>
       {% endfor %}
-    </tbody>
-  </table>
+    </div>
+  </div>
 </div>
+
+<div class="row">
+  <!-- Recent orders -->
+  <div class="col-12 col-xl-7">
+    <div class="card mb-4" data-table-wrap>
+      <div class="card-header">
+        <h3 class="card-title">Recent orders</h3>
+        <div class="card-tools">
+          <a href="{{ url_for('admin.orders') }}" class="btn btn-sm btn-outline-secondary">View all</a>
+        </div>
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-hover mb-0" id="recent-orders-table">
+          <thead><tr><th>Order #</th><th>Customer</th><th>Date</th><th>Total</th><th>Status</th><th></th></tr></thead>
+          <tbody>
+            {% for order in recent_orders %}
+            <tr>
+              <td class="font-monospace">#{{ order.order_id }}</td>
+              <td>{{ order.user.name }}</td>
+              <td class="text-secondary">{{ order.created_at.strftime('%b %d, %Y') }}</td>
+              <td class="font-monospace">${{ "%.2f"|format(order.total_amount|float) }}</td>
+              <td>{{ m.status_badge(order.status) }}</td>
+              <td>
+                <a href="{{ url_for('admin.order_detail', order_id=order.order_id) }}"
+                   class="btn btn-outline-secondary btn-sm">View</a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Catalog health -->
+  <div class="col-12 col-xl-5">
+    <div class="card mb-4">
+      <div class="card-header"><h3 class="card-title">Low stock</h3></div>
+      <div class="card-body p-0">
+        {% if low_stock %}
+        <table class="table table-hover mb-0">
+          <thead><tr><th>Product</th><th>Size</th><th>Left</th></tr></thead>
+          <tbody>
+            {% for v in low_stock %}
+            <tr>
+              <td><a href="{{ url_for('admin.variants', product_id=v.product_id) }}">{{ v.product.name }}</a></td>
+              <td class="text-secondary small">{{ v.label() }}</td>
+              <td class="font-monospace">
+                <span class="badge text-bg-{{ 'danger' if v.stock == 0 else 'warning' }}">{{ v.stock }}</span>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+          <p class="text-secondary text-center p-4 mb-0">Everything is well stocked.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card mb-4">
+      <div class="card-header"><h3 class="card-title">Expiring soon</h3></div>
+      <div class="card-body p-0">
+        {% if expiring %}
+        <table class="table table-hover mb-0">
+          <thead><tr><th>Product</th><th>Batch</th><th>Expires</th></tr></thead>
+          <tbody>
+            {% for v in expiring %}
+            <tr>
+              <td>
+                <a href="{{ url_for('admin.variants', product_id=v.product_id) }}">{{ v.product.name }}</a>
+                <div class="text-secondary small">{{ v.label() }}</div>
+              </td>
+              <td class="font-monospace small">{{ v.batch_no or '—' }}</td>
+              <td class="font-monospace">
+                <span class="badge text-bg-{{ 'danger' if v.days_until_expiry() is not none and v.days_until_expiry() < 90 else 'warning' }}">
+                  {{ v.expiry_date.strftime('%b %Y') }}
+                </span>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+          <p class="text-secondary text-center p-4 mb-0">No stock nearing expiry.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card mb-4">
+      <div class="card-header"><h3 class="card-title">Concern coverage</h3></div>
+      <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+          <thead><tr><th>Concern</th><th>Products</th></tr></thead>
+          <tbody>
+            {% for name, count in concern_coverage %}
+            <tr>
+              <td>{{ name }}</td>
+              <td class="font-monospace">
+                <span class="{% if count == 0 %}text-danger fw-bold{% endif %}">{{ count }}</span>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/apexcharts@3.37.1/dist/apexcharts.min.js"
+        integrity="sha256-+vh8GkaU7C9/wbSLIcwq82tQ2wTf44aOHA8HlBMwRI8=" crossorigin="anonymous"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    new ApexCharts(document.querySelector('#trend-chart'), {
+      series: [
+        { name: 'Orders', type: 'column', data: {{ monthly_order_counts|tojson }} },
+        { name: 'Revenue ($)', type: 'line', data: {{ monthly_revenue|tojson }} },
+      ],
+      chart: { height: 300, type: 'line', toolbar: { show: false } },
+      stroke: { width: [0, 3], curve: 'smooth' },
+      colors: ['#3c4c33', '#c9ee52'],
+      xaxis: { categories: {{ monthly_labels|tojson }} },
+      yaxis: [
+        { title: { text: 'Orders' } },
+        { opposite: true, title: { text: 'Revenue ($)' } },
+      ],
+    }).render();
+
+    new ApexCharts(document.querySelector('#status-chart'), {
+      series: {{ order_statuses.values()|list|tojson }},
+      labels: {{ order_statuses.keys()|list|tojson }},
+      chart: { height: 300, type: 'donut' },
+      colors: ['#8a5a15', '#2f5473', '#3c4c33', '#35632f', '#a83a2c'],
+      legend: { position: 'bottom' },
+    }).render();
+  });
+</script>
 {% endblock %}

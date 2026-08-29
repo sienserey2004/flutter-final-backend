@@ -1,0 +1,79 @@
+{# Shared AdminLTE UI-element helpers for the admin panel. #}
+
+{% macro status_badge(status) -%}
+{% set colors = {
+  'Pending': 'warning', 'Processing': 'info', 'Preparing': 'info', 'Shipped': 'primary',
+  'Delivered': 'success', 'Cancelled': 'danger', 'Requested': 'warning', 'Approved': 'info',
+  'Rejected': 'danger', 'Received': 'primary', 'Refunded': 'secondary', 'Paid': 'success',
+  'Failed': 'danger', 'Expired': 'secondary', 'Active': 'success', 'Paused': 'warning',
+} -%}
+<span class="badge text-bg-{{ colors.get(status, 'secondary') }}">{{ status }}</span>
+{%- endmacro %}
+
+{% macro bool_badge(value, true_label='Active', false_label='Hidden') -%}
+<span class="badge text-bg-{{ 'success' if value else 'secondary' }}">{{ true_label if value else false_label }}</span>
+{%- endmacro %}
+
+{# One reusable confirm-delete modal per call site — pass a DOM-unique modal_id
+   (e.g. 'brand-' ~ b.brand_id), since a page can render many of these. #}
+{% macro delete_button(action, modal_id, item_label, extra_warning=none, size='sm') -%}
+<button type="button" class="btn btn-outline-danger btn-{{ size }}" data-bs-toggle="modal"
+        data-bs-target="#{{ modal_id }}" title="Delete" aria-label="Delete {{ item_label }}">
+  <i class="bi bi-trash" aria-hidden="true"></i>
+</button>
+<div class="modal fade" id="{{ modal_id }}" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-exclamation-triangle-fill text-danger me-2" aria-hidden="true"></i>Delete {{ item_label }}?</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-0">This permanently deletes <strong>{{ item_label }}</strong>.
+          {%- if extra_warning %} {{ extra_warning }}{% endif %} This can't be undone.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+        <form action="{{ action }}" method="post" class="m-0">
+          <button type="submit" class="btn btn-danger"><i class="bi bi-trash me-1" aria-hidden="true"></i>Delete</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{%- endmacro %}
+
+{% macro small_box(value, label, icon, color='primary', href=none) -%}
+<div class="small-box text-bg-{{ color }}">
+  <div class="inner">
+    <h3>{{ value }}</h3>
+    <p>{{ label }}</p>
+  </div>
+  <i class="small-box-icon bi bi-{{ icon }}" aria-hidden="true"></i>
+  {% if href %}
+  <a href="{{ href }}" class="small-box-footer link-light link-underline-opacity-0 link-underline-opacity-50-hover">
+    More info <i class="bi bi-link-45deg" aria-hidden="true"></i>
+  </a>
+  {% endif %}
+</div>
+{%- endmacro %}
+
+{% macro info_box(value, label, icon, color='primary') -%}
+<div class="info-box">
+  <span class="info-box-icon text-bg-{{ color }}"><i class="bi bi-{{ icon }}" aria-hidden="true"></i></span>
+  <div class="info-box-content">
+    <span class="info-box-text">{{ label }}</span>
+    <span class="info-box-number">{{ value }}</span>
+  </div>
+</div>
+{%- endmacro %}
+
+{# Card-header search box that live-filters the rows of the table with
+   id=table_id via the generic script in base_admin.html. #}
+{% macro table_search(table_id, placeholder='Filter rows…') -%}
+<div class="input-group input-group-sm" style="width: 16rem">
+  <span class="input-group-text"><i class="bi bi-search" aria-hidden="true"></i></span>
+  <input type="search" class="form-control admin-table-search" data-table-target="{{ table_id }}"
+         placeholder="{{ placeholder }}" aria-label="{{ placeholder }}">
+</div>
+{%- endmacro %}

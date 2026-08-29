@@ -1,0 +1,112 @@
+{% extends "admin/base_admin.html" %}
+{% import "admin/_macros.html" as m %}
+{% block title %}Ingredients — {{ product.name }}{% endblock %}
+
+{% block admin_content %}
+<div class="d-flex align-items-center gap-2 mb-3">
+  <a href="{{ url_for('admin.edit_product', product_id=product.product_id) }}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left"></i>
+  </a>
+  <div>
+    <p class="text-secondary small mb-0">{{ product.name }}</p>
+    <h3 class="mb-0">Ingredients</h3>
+  </div>
+</div>
+
+<div class="row g-4">
+  <!-- Link an ingredient -->
+  <div class="col-12 col-lg-4">
+    <div class="card">
+      <div class="card-header"><h3 class="card-title">Link ingredient</h3></div>
+      <div class="card-body">
+        <form method="post">
+          <div class="mb-3">
+            <label class="form-label" for="ingredient_id">Ingredient</label>
+            <select class="form-select" id="ingredient_id" name="ingredient_id" required>
+              <option value="">Choose…</option>
+              {% for i in all_ingredients %}
+                <option value="{{ i.ingredient_id }}">
+                  {{ i.name }}{% if not i.is_active_ingredient %} (supporting){% endif %}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="concentration">Concentration</label>
+            <input type="text" class="form-control" id="concentration" name="concentration"
+                   placeholder="10%, 0.3%, leave blank if undisclosed">
+          </div>
+          <div class="mb-3">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" role="switch" id="is_key" name="is_key" value="1" checked>
+              <label class="form-check-label" for="is_key">Key ingredient</label>
+            </div>
+            <div class="form-text">Key ingredients show on the product card and drive the ingredient filter.</div>
+          </div>
+          <button type="submit" class="btn btn-primary w-100">
+            <i class="bi bi-plus-lg me-1"></i>Link ingredient
+          </button>
+        </form>
+        <a href="{{ url_for('admin.new_ingredient') }}" class="btn btn-outline-secondary btn-sm w-100 mt-2">
+          Ingredient not listed? Create it
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Linked -->
+  <div class="col-12 col-lg-8">
+    <div class="card mb-3" data-table-wrap>
+      <div class="card-header">
+        <h3 class="card-title">Linked ingredients <span class="text-secondary fs-6">({{ product.ingredient_links.count() }})</span></h3>
+        <div class="card-tools">
+          {{ m.table_search('linked-ingredients-table', 'Filter ingredients…') }}
+        </div>
+      </div>
+      <div class="card-body p-0">
+        {% if product.ingredient_links.count() %}
+        <table class="table table-hover mb-0" id="linked-ingredients-table">
+          <thead>
+            <tr><th data-sort>Ingredient</th><th>INCI</th><th data-sort>Concentration</th><th data-sort>Role</th><th></th></tr>
+          </thead>
+          <tbody>
+            {% for link in product.ingredient_links %}
+            <tr>
+              <td class="fw-semibold">{{ link.ingredient.name }}</td>
+              <td class="font-monospace small text-secondary">{{ link.ingredient.inci_name or '—' }}</td>
+              <td class="font-monospace">{{ link.concentration or '—' }}</td>
+              <td>{{ m.bool_badge(link.is_key, 'Key', 'Supporting') }}</td>
+              <td>
+                {{ m.delete_button(url_for('admin.delete_product_ingredient', product_id=product.product_id, link_id=link.id), 'link-' ~ link.id, link.ingredient.name) }}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+          <div class="text-center text-secondary p-5">
+            <i class="bi bi-droplet fs-1 d-block mb-3 opacity-50"></i>
+            <p class="mb-0">No ingredients linked yet.</p>
+          </div>
+        {% endif %}
+        <p class="admin-table-empty text-center text-secondary p-4 mb-0" hidden>No rows match your filter.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><h3 class="card-title">Full INCI list on file</h3></div>
+      <div class="card-body">
+        {% if product.ingredients_full %}
+          <p class="mb-0" style="line-height:1.7;">{{ product.ingredients_full }}</p>
+        {% else %}
+          <p class="mb-0 text-secondary">
+            None recorded.
+            <a href="{{ url_for('admin.edit_product', product_id=product.product_id) }}">
+              Add it on the product form</a> — customers with allergies depend on it.
+          </p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

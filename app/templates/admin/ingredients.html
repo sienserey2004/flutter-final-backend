@@ -1,0 +1,55 @@
+{% extends "admin/base_admin.html" %}
+{% import "admin/_macros.html" as m %}
+{% block title %}Ingredients{% endblock %}
+
+{% block admin_content %}
+<div class="card" data-table-wrap>
+  <div class="card-header">
+    <h3 class="card-title">Ingredients <span class="text-secondary fs-6">({{ ingredients|length }})</span></h3>
+    <div class="card-tools d-flex gap-2">
+      {{ m.table_search('ingredients-table', 'Filter ingredients…') }}
+      <a href="{{ url_for('admin.new_ingredient') }}" class="btn btn-primary btn-sm">
+        <i class="bi bi-plus-lg me-1"></i>New Ingredient
+      </a>
+    </div>
+  </div>
+  <div class="card-body p-0">
+    {% if ingredients %}
+    <table class="table table-hover mb-0" id="ingredients-table">
+      <thead>
+        <tr><th data-sort>Name</th><th>INCI</th><th data-sort>Type</th><th data-sort>Used in</th><th>Caution</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for i in ingredients %}
+        <tr>
+          <td class="fw-semibold">{{ i.name }}</td>
+          <td class="font-monospace small text-secondary">{{ i.inci_name or '—' }}</td>
+          <td>{{ m.bool_badge(i.is_active_ingredient, 'Active', 'Supporting') }}</td>
+          <td class="font-monospace">{{ i.product_links.count() }}</td>
+          <td class="small text-secondary" style="max-width:260px;">
+            {% if i.caution_note %}
+              <i class="bi bi-exclamation-triangle-fill text-warning me-1"></i>{{ i.caution_note|truncate(70) }}
+            {% else %}—{% endif %}
+          </td>
+          <td>
+            <div class="d-flex gap-1">
+              <a href="{{ url_for('admin.edit_ingredient', ingredient_id=i.ingredient_id) }}" class="btn btn-outline-primary btn-sm">Edit</a>
+              <a href="{{ url_for('products.by_ingredient', slug=i.slug) }}" class="btn btn-outline-secondary btn-sm" target="_blank">View</a>
+              {{ m.delete_button(url_for('admin.delete_ingredient', ingredient_id=i.ingredient_id), 'ingredient-' ~ i.ingredient_id, i.name) }}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+      <div class="text-center text-secondary p-5">
+        <i class="bi bi-droplet fs-1 d-block mb-3 opacity-50"></i>
+        <p>No ingredients yet. These power the ingredient filter and the glossary.</p>
+        <a href="{{ url_for('admin.new_ingredient') }}" class="btn btn-primary btn-sm">Add an ingredient</a>
+      </div>
+    {% endif %}
+    <p class="admin-table-empty text-center text-secondary p-4 mb-0" hidden>No rows match your filter.</p>
+  </div>
+</div>
+{% endblock %}

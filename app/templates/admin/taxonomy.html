@@ -1,0 +1,93 @@
+{% extends "admin/base_admin.html" %}
+{% import "admin/_macros.html" as m %}
+{% block title %}{{ meta.plural }}{% endblock %}
+
+{% block admin_content %}
+<div class="mb-4">
+  <h3 class="mb-1">{{ meta.plural }}</h3>
+  <p class="text-secondary small mb-0" style="max-width:640px;">
+    {% if kind == 'skin-types' %}
+      Skin types customers pick in their profile and filter the catalog by.
+      Changing a name here changes it everywhere.
+    {% else %}
+      The concerns products are tagged against — these drive the "Shop by concern"
+      navigation and the personalised routine.
+    {% endif %}
+  </p>
+</div>
+
+<div class="row g-4">
+  <!-- Add new -->
+  <div class="col-12 col-lg-4">
+    <div class="card">
+      <div class="card-body">
+        <h5 class="fw-bold mb-3">Add {{ meta.label|lower }}</h5>
+        <form method="post" action="{{ url_for('admin.taxonomy', kind=kind) }}">
+          <div class="mb-3">
+            <label class="form-label" for="name">Name</label>
+            <input type="text" class="form-control" id="name" name="name" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="icon">Icon (emoji)</label>
+            <input type="text" class="form-control" id="icon" name="icon" maxlength="4"
+                   placeholder="💧" style="width:90px;">
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="description">Description</label>
+            <textarea class="form-control" id="description" name="description" rows="3"
+                      placeholder="Shown on the storefront tile."></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary w-100">
+            <i class="bi bi-plus-lg me-1"></i>Add
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Existing -->
+  <div class="col-12 col-lg-8">
+    <div class="d-flex flex-column gap-2">
+      {% for item in items %}
+        {% set item_id = item.skin_type_id if kind == 'skin-types' else item.concern_id %}
+        <div class="card">
+          <div class="card-body p-3">
+            <form method="post"
+                  action="{{ url_for('admin.edit_taxonomy', kind=kind, item_id=item_id) }}">
+              <div class="row g-2 align-items-start">
+                <div class="col-2 col-sm-1">
+                  <input type="text" class="form-control text-center" name="icon"
+                         maxlength="4" value="{{ item.icon or '' }}">
+                </div>
+                <div class="col-10 col-sm-4">
+                  <input type="text" class="form-control" name="name" value="{{ item.name }}" required>
+                  <div class="font-monospace small text-secondary mt-1">
+                    {{ item.slug }} · {{ item.products.count() }} product(s)
+                  </div>
+                </div>
+                <div class="col-12 col-sm-5">
+                  <input type="text" class="form-control" name="description"
+                         value="{{ item.description or '' }}" placeholder="Description">
+                </div>
+                <div class="col-12 col-sm-2 d-flex gap-1">
+                  <button class="btn btn-outline-primary btn-sm" type="submit">Save</button>
+                </div>
+              </div>
+            </form>
+            <div class="mt-2">
+              {{ m.delete_button(url_for('admin.delete_taxonomy', kind=kind, item_id=item_id), kind ~ '-' ~ item_id, item.name) }}
+            </div>
+          </div>
+        </div>
+      {% else %}
+        <div class="card">
+          <div class="text-center text-secondary p-5">
+            <i class="bi bi-tags fs-1 d-block mb-3 opacity-50"></i>
+            <p class="mb-0">Nothing here yet.</p>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

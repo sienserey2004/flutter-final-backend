@@ -1,39 +1,96 @@
+{#  Product tile. Expects `product`. #}
 <div class="col">
-  <a href="{{ url_for('products.detail', product_id=product.product_id) }}"
-     class="text-decoration-none">
-    <div class="card product-card h-100">
+  <div class="card product-card h-100 position-relative">
+    {% set cheapest = product.variants.first() %}
+
+    {% if cheapest and cheapest.is_on_sale() %}
+      <span class="badge badge-organic"
+            style="position:absolute;top:.7rem;left:.7rem;z-index:2;">
+        −{{ cheapest.discount_percent() }}%
+      </span>
+    {% elif product.total_stock() == 0 %}
+      <span class="badge badge-danger"
+            style="position:absolute;top:.7rem;left:.7rem;z-index:2;">
+        Sold out
+      </span>
+    {% endif %}
+
+    {% if current_user.is_authenticated %}
+      <form action="{{ url_for('account.toggle_wishlist') }}" method="post"
+            style="position:absolute;top:.6rem;right:.6rem;z-index:2;">
+        <input type="hidden" name="product_id" value="{{ product.product_id }}">
+        <button type="submit" class="btn-heart
+                {%- if current_user.wishlist and current_user.wishlist.has_product(product.product_id) %} saved{% endif %}"
+                style="width:34px;height:34px;font-size:.85rem;"
+                title="Save to wishlist" aria-label="Save to wishlist">
+          <i class="bi bi-heart{% if current_user.wishlist and current_user.wishlist.has_product(product.product_id) %}-fill{% endif %}"></i>
+        </button>
+      </form>
+    {% endif %}
+
+    <a href="{{ url_for('products.detail', product_id=product.product_id) }}"
+       class="text-decoration-none d-flex flex-column h-100">
+
       <div class="product-img">
-        {% set first_variant = product.variants.first() %}
-        {% if first_variant and first_variant.image %}
-          <img src="{{ first_variant.image }}" alt="{{ product.name }}" loading="lazy"/>
+        {% set img = product.primary_image_url() %}
+        {% if img %}
+          <img src="{{ img }}" alt="{{ product.name }}" loading="lazy"/>
         {% else %}
-          <span style="font-size:3.5rem;opacity:.5;">🍃</span>
+          <span style="font-size:2.6rem;opacity:.35;">✦</span>
         {% endif %}
       </div>
-      <div class="card-body">
-        <span class="product-category-tag mb-2 d-inline-block">{{ product.category.name }}</span>
-        <h6 style="font-weight:700;margin-bottom:.4rem;color:var(--c-text);font-size:.95rem;line-height:1.3;">
-          {{ product.name }}
-        </h6>
-        <div class="d-flex align-items-center justify-content-between mt-auto">
-          <span class="product-price">${{ "%.2f"|format(product.base_price|float) }}</span>
+
+      <div class="card-body d-flex flex-column">
+        {% if product.brand %}
+          <span style="font-size:.66rem;font-weight:700;letter-spacing:.13em;
+                       text-transform:uppercase;color:var(--c-muted);">
+            {{ product.brand.name }}
+          </span>
+        {% endif %}
+
+        <!-- name left / price right, as in the reference grid -->
+        <div class="d-flex align-items-baseline justify-content-between gap-2 mt-1">
+          <h6 style="font-weight:600;margin:0;color:var(--c-text);font-size:.96rem;
+                     line-height:1.25;letter-spacing:-.015em;">
+            {{ product.name }}
+          </h6>
+          <span class="d-flex align-items-baseline gap-1 flex-shrink-0">
+            <span class="product-price">${{ "%.2f"|format(product.base_price|float) }}</span>
+          </span>
+        </div>
+
+        {% if cheapest and cheapest.is_on_sale() %}
+          <div class="text-end">
+            <span class="price-was">${{ "%.2f"|format(cheapest.compare_at_price|float) }}</span>
+          </div>
+        {% endif %}
+
+        <div class="d-flex align-items-center gap-2 mt-1"
+             style="font-size:.76rem;color:var(--c-muted);">
+          {% if product.product_type %}<span>{{ product.product_type }}</span>{% endif %}
+          {% if product.volume_label %}<span>· {{ product.volume_label }}</span>{% endif %}
+          {% if product.spf %}<span>· SPF {{ product.spf }}</span>{% endif %}
           {% if product.avg_rating() > 0 %}
-            <span class="stars" style="font-size:.8rem;">
-              {% for i in range(product.avg_rating()|int) %}★{% endfor %}
-              <span style="color:var(--c-muted);font-size:.72rem;font-family:var(--font-mono);margin-left:2px;">
+            <span class="ms-auto d-flex align-items-center gap-1" style="flex-shrink:0;">
+              <span class="stars" style="font-size:.75rem;">★</span>
+              <span style="font-family:var(--font-mono);font-size:.72rem;">
                 {{ product.avg_rating() }}
               </span>
             </span>
           {% endif %}
         </div>
-        {% if product.total_stock() == 0 %}
-          <span class="badge badge-danger mt-2">Out of stock</span>
-        {% elif product.total_stock() <= 5 %}
-          <span class="badge badge-organic mt-2">Only {{ product.total_stock() }} left</span>
-        {% else %}
-          <span class="badge badge-fresh mt-2">In Stock</span>
+
+        {% set keys = product.key_ingredients() %}
+        {% if keys %}
+          <div class="d-flex flex-wrap gap-1 mt-2">
+            {% for link in keys[:2] %}
+              <span class="claim-chip" style="font-size:.66rem;padding:.12rem .5rem;">
+                {{ link.ingredient.name }}{% if link.concentration %} {{ link.concentration }}{% endif %}
+              </span>
+            {% endfor %}
+          </div>
         {% endif %}
       </div>
-    </div>
-  </a>
+    </a>
+  </div>
 </div>

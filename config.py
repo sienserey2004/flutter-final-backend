@@ -3,23 +3,58 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+INSTANCE_DIR = os.path.join(BASE_DIR, 'instance')
+
+
+def _normalize_db_url(url: str) -> str:
+    """Ensure SQLAlchemy receives a psycopg2 URL regardless of input format."""
+    if url.startswith('postgresql+psycopg2://'):
+        return url
+    if url.startswith('postgresql+asyncpg://'):
+        return url.replace('postgresql+asyncpg://', 'postgresql+psycopg2://', 1)
+    if url.startswith('postgresql+pg8000://'):
+        return url.replace('postgresql+pg8000://', 'postgresql+psycopg2://', 1)
+    if url.startswith('postgresql://') or url.startswith('postgres://'):
+        return url.replace('postgres://', 'postgresql+psycopg2://', 1) \
+                  .replace('postgresql://', 'postgresql+psycopg2://', 1)
+    return url
+
+
 class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
-    # Convert asyncpg URL to psycopg2 for sync Flask
-    _db_url = os.environ.get(
+
+    os.makedirs(INSTANCE_DIR, exist_ok=True)
+    _raw_db_url = os.environ.get(
         'DATABASE_URL',
-        'postgresql+asyncpg://myuser:MySecretPassword@localhost:5433/py_ecommerce'
+        'sqlite:///' + os.path.join(INSTANCE_DIR, 'ecommerce.db')
     )
-    SQLALCHEMY_DATABASE_URI = _db_url.replace('postgresql+asyncpg://', 'postgresql+pg8000://')
+    SQLALCHEMY_DATABASE_URI = _normalize_db_url(_raw_db_url)
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    SQLALCHEMY_ENGINE_OPTIONS = {
-        'pool_pre_ping': True,
-        'pool_recycle': 300,
-    }
+
+    if SQLALCHEMY_DATABASE_URI.startswith('sqlite://'):
+        SQLALCHEMY_ENGINE_OPTIONS = {
+            'connect_args': {'check_same_thread': False},
+        }
+    else:
+        SQLALCHEMY_ENGINE_OPTIONS = {
+            'pool_pre_ping': True,
+            'pool_recycle': 300,
+            'connect_args': {
+                'sslmode': 'require',
+            },
+        }
+
     WTF_CSRF_ENABLED = True
     UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'app', 'static', 'img', 'products')
-    MAX_CONTENT_LENGTH = 5 * 1024 * 1024  # 5MB
+    MAX_CONTENT_LENGTH = 5 * 1024 * 1024  # 5 MB
     BAKONG_TOKEN = os.environ.get('bakong_token')
+
+    # Storefront
+    STORE_NAME    = os.environ.get('STORE_NAME', 'Aurea Skin')
+    STORE_TAGLINE = os.environ.get('STORE_TAGLINE', 'Honest skincare, matched to your skin.')
+    # Applied to (subtotal − discount) at checkout. 0 = tax-inclusive pricing.
+    TAX_RATE      = float(os.environ.get('TAX_RATE', '0') or 0)
 
 
 class DevelopmentConfig(Config):
@@ -33,5 +68,5 @@ class ProductionConfig(Config):
 config = {
     'development': DevelopmentConfig,
     'production': ProductionConfig,
-    'default': DevelopmentConfig
+    'default': DevelopmentConfig,
 }

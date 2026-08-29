@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}For You{% endblock %}
+
+{% block content %}
+<div class="page-container">
+
+  <div class="mb-4">
+    <p class="section-title mb-1">Personalised</p>
+    <h2 style="font-weight:800;margin:0;">Your routine</h2>
+  </div>
+
+  {% if not profile %}
+    <div class="empty-state">
+      <div class="icon">✧</div>
+      <h4 style="color:var(--c-text);margin-bottom:.5rem;">Tell us about your skin first</h4>
+      <p style="max-width:520px;margin:0 auto 1.5rem;">
+        Two minutes: your skin type, your concerns, anything you react to. We'll
+        match products to it and skip anything that doesn't fit.
+      </p>
+      {% if current_user.is_authenticated %}
+        <a href="{{ url_for('account.skin_profile') }}" class="btn btn-primary btn-lg">
+          <i class="bi bi-droplet me-1"></i> Set up my skin profile
+        </a>
+      {% else %}
+        <a href="{{ url_for('auth.register') }}" class="btn btn-primary btn-lg">
+          Create an account to start
+        </a>
+      {% endif %}
+    </div>
+  {% else %}
+
+    <!-- Profile summary -->
+    <div class="card mb-4" style="border-radius:var(--radius-xl);">
+      <div class="card-body p-4 d-flex flex-wrap align-items-center gap-3">
+        <div class="flex-grow-1">
+          <p class="section-title mb-2">Matching on</p>
+          <div class="d-flex flex-wrap gap-2 align-items-center">
+            {% if profile.skin_type %}
+              <span class="claim-chip">{{ profile.skin_type.icon or '' }} {{ profile.skin_type.name }} skin</span>
+            {% endif %}
+            {% if profile.age_range %}<span class="claim-chip">{{ profile.age_range }}</span>{% endif %}
+            {% if profile.is_sensitive %}
+              <span class="claim-chip" style="background:var(--c-orange-lt);color:var(--c-orange-dk);">
+                Sensitive — fragrance-free only
+              </span>
+            {% endif %}
+            {% for c in profile.concerns %}
+              <span class="claim-chip">{{ c.icon or '' }} {{ c.name }}</span>
+            {% endfor %}
+          </div>
+          {% if profile.allergies %}
+            <p class="mb-0 mt-3" style="font-size:.85rem;">
+              <strong style="color:var(--c-danger);">Avoiding:</strong> {{ profile.allergies }}
+              — check the full INCI on each product before buying.
+            </p>
+          {% endif %}
+        </div>
+        <a href="{{ url_for('account.skin_profile') }}" class="btn btn-outline">
+          <i class="bi bi-pencil me-1"></i> Edit profile
+        </a>
+      </div>
+    </div>
+
+    {% if grouped %}
+      {% for step, label, step_products in grouped %}
+        <div class="d-flex align-items-center gap-2 mb-3 mt-4">
+          <span class="routine-step">{{ step }}</span>
+          <h4 style="font-weight:800;margin:0;">{{ label }}</h4>
+          <span style="font-size:.8rem;color:var(--c-muted);font-family:var(--font-mono);">
+            {{ step_products|length }} match{{ 'es' if step_products|length != 1 }}
+          </span>
+        </div>
+        <div class="row row-cols-2 row-cols-sm-3 row-cols-lg-4 g-3">
+          {% for product in step_products %}{% include "products/_card.html" %}{% endfor %}
+        </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty-state">
+        <div class="icon">🔍</div>
+        <h4 style="color:var(--c-text);margin-bottom:.5rem;">No exact matches yet</h4>
+        <p>
+          Your combination of skin type and concerns is narrower than the current
+          catalog. Try removing a concern from your profile, or browse by concern.
+        </p>
+        <a href="{{ url_for('products.list_products') }}" class="btn btn-primary mt-2">
+          Browse all products
+        </a>
+      </div>
+    {% endif %}
+
+  {% endif %}
+
+</div>
+{% endblock %}

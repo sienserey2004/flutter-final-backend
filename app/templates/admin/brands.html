@@ -1,0 +1,53 @@
+{% extends "admin/base_admin.html" %}
+{% import "admin/_macros.html" as m %}
+{% block title %}Brands{% endblock %}
+
+{% block admin_content %}
+<div class="card" data-table-wrap>
+  <div class="card-header">
+    <h3 class="card-title">Brands <span class="text-secondary fs-6">({{ brands|length }})</span></h3>
+    <div class="card-tools d-flex gap-2">
+      {{ m.table_search('brands-table', 'Filter brands…') }}
+      <a href="{{ url_for('admin.new_brand') }}" class="btn btn-primary btn-sm">
+        <i class="bi bi-plus-lg me-1"></i>New Brand
+      </a>
+    </div>
+  </div>
+  <div class="card-body p-0">
+    {% if brands %}
+    <table class="table table-hover mb-0" id="brands-table">
+      <thead>
+        <tr><th data-sort>ID</th><th data-sort>Name</th><th>Slug</th><th data-sort>Country</th>
+            <th data-sort>Products</th><th data-sort>Status</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for b in brands %}
+        <tr>
+          <td class="font-monospace text-secondary">{{ b.brand_id }}</td>
+          <td class="fw-semibold">{{ b.name }}</td>
+          <td class="font-monospace small text-secondary">{{ b.slug }}</td>
+          <td>{{ b.country or '—' }}</td>
+          <td class="font-monospace">{{ b.products.count() }}</td>
+          <td>{{ m.bool_badge(b.is_active, 'Active', 'Hidden') }}</td>
+          <td>
+            <div class="d-flex gap-1">
+              <a href="{{ url_for('admin.edit_brand', brand_id=b.brand_id) }}" class="btn btn-outline-primary btn-sm">Edit</a>
+              <a href="{{ url_for('products.by_brand', slug=b.slug) }}" class="btn btn-outline-secondary btn-sm" target="_blank">View</a>
+              {{ m.delete_button(url_for('admin.delete_brand', brand_id=b.brand_id), 'brand-' ~ b.brand_id, b.name) }}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+      <div class="text-center text-secondary p-5">
+        <i class="bi bi-award fs-1 d-block mb-3 opacity-50"></i>
+        <p>No brands yet. Products can exist without one, but brand is how most skincare customers navigate.</p>
+        <a href="{{ url_for('admin.new_brand') }}" class="btn btn-primary btn-sm">Add a brand</a>
+      </div>
+    {% endif %}
+    <p class="admin-table-empty text-center text-secondary p-4 mb-0" hidden>No rows match your filter.</p>
+  </div>
+</div>
+{% endblock %}

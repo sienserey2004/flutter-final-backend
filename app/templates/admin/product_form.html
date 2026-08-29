@@ -2,61 +2,218 @@
 {% block title %}{{ 'Edit' if product else 'New' }} Product{% endblock %}
 
 {% block admin_content %}
-<div class="d-flex align-items-center gap-3 mb-4">
-  <a href="{{ url_for('admin.products') }}" class="btn btn-ghost btn-sm">
+<div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+  <a href="{{ url_for('admin.products') }}" class="btn btn-outline-secondary btn-sm">
     <i class="bi bi-arrow-left"></i>
   </a>
-  <div>
-    <p class="section-title mb-0">Products</p>
-    <h2 class="mb-0">{{ 'Edit' if product else 'New' }} Product</h2>
-  </div>
+  <h3 class="mb-0">{{ 'Edit' if product else 'New' }} Product</h3>
+  {% if product %}
+    <div class="ms-auto d-flex gap-1 flex-wrap">
+      <a href="{{ url_for('admin.variants', product_id=product.product_id) }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-layers me-1"></i>Variants ({{ product.variants.count() }})
+      </a>
+      <a href="{{ url_for('admin.product_images', product_id=product.product_id) }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-images me-1"></i>Images ({{ product.images.count() }})
+      </a>
+      <a href="{{ url_for('admin.product_ingredients', product_id=product.product_id) }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-droplet me-1"></i>Ingredients ({{ product.ingredient_links.count() }})
+      </a>
+      <a href="{{ url_for('products.detail', product_id=product.product_id) }}" class="btn btn-outline-secondary btn-sm" target="_blank">
+        <i class="bi bi-box-arrow-up-right me-1"></i>View
+      </a>
+    </div>
+  {% endif %}
 </div>
 
-<div class="card" style="max-width:600px;">
-  <div class="card-body p-4">
-    <form method="post">
-      <div class="row g-3">
-        <div class="col-12">
-          <label class="form-label" for="name">Product Name</label>
-          <input type="text" class="form-control" id="name" name="name"
-                 value="{{ product.name if product else '' }}" required autofocus>
-        </div>
-        <div class="col-12 col-sm-6">
-          <label class="form-label" for="category_id">Category</label>
-          <select class="form-select" id="category_id" name="category_id" required>
-            <option value="">Select category…</option>
-            {% for cat in categories %}
-              <option value="{{ cat.category_id }}"
-                      {% if product and product.category_id == cat.category_id %}selected{% endif %}>
-                {{ cat.name }}
-              </option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="col-12 col-sm-6">
-          <label class="form-label" for="base_price">Base Price ($)</label>
-          <input type="number" step="0.01" min="0" class="form-control"
-                 id="base_price" name="base_price"
-                 value="{{ "%.2f"|format(product.base_price|float) if product else '' }}" required>
-        </div>
-        <div class="col-12">
-          <label class="form-label" for="description">Description</label>
-          <textarea class="form-control" id="description" name="description" rows="4">{{ product.description if product else '' }}</textarea>
-        </div>
-        <div class="col-12 d-flex gap-2 mt-2">
-          <button type="submit" class="btn btn-primary">
-            {{ 'Update' if product else 'Create' }} Product
-          </button>
-          {% if product %}
-            <a href="{{ url_for('admin.variants', product_id=product.product_id) }}"
-               class="btn btn-outline">
-              <i class="bi bi-layers me-1"></i> Manage Variants
-            </a>
-          {% endif %}
-          <a href="{{ url_for('admin.products') }}" class="btn btn-ghost">Cancel</a>
+<form method="post">
+  <div class="row">
+    <!-- Basics -->
+    <div class="col-12 col-xl-7">
+      <div class="card mb-4">
+        <div class="card-header"><h3 class="card-title">Basics</h3></div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label" for="name">Product name</label>
+              <input type="text" class="form-control" id="name" name="name"
+                     value="{{ product.name if product else '' }}" required autofocus>
+            </div>
+            <div class="col-12 col-sm-6">
+              <label class="form-label" for="brand_id">Brand</label>
+              <select class="form-select" id="brand_id" name="brand_id">
+                <option value="">No brand</option>
+                {% for b in brands %}
+                  <option value="{{ b.brand_id }}" {% if product and product.brand_id == b.brand_id %}selected{% endif %}>
+                    {{ b.name }}
+                  </option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-12 col-sm-6">
+              <label class="form-label" for="category_id">Category</label>
+              <select class="form-select" id="category_id" name="category_id" required>
+                <option value="">Select category…</option>
+                {% for cat in categories %}
+                  <option value="{{ cat.category_id }}" {% if product and product.category_id == cat.category_id %}selected{% endif %}>
+                    {% if cat.parent_id %}— {% endif %}{{ cat.name }}
+                  </option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-12 col-sm-4">
+              <label class="form-label" for="base_price">Base price</label>
+              <div class="input-group">
+                <span class="input-group-text">$</span>
+                <input type="number" step="0.01" min="0" class="form-control" id="base_price" name="base_price"
+                       value="{{ '%.2f'|format(product.base_price|float) if product else '' }}" required>
+              </div>
+            </div>
+            <div class="col-12 col-sm-4">
+              <label class="form-label" for="product_type">Product type</label>
+              <select class="form-select" id="product_type" name="product_type">
+                <option value="">—</option>
+                {% for t in product_types %}
+                  <option value="{{ t }}" {% if product and product.product_type == t %}selected{% endif %}>{{ t }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-12 col-sm-4">
+              <label class="form-label" for="routine_step">Routine step</label>
+              <select class="form-select" id="routine_step" name="routine_step">
+                <option value="">—</option>
+                {% for num, label in routine_steps.items() %}
+                  <option value="{{ num }}" {% if product and product.routine_step == num %}selected{% endif %}>
+                    {{ num }}. {{ label }}
+                  </option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-12">
+              <label class="form-label" for="description">Description</label>
+              <textarea class="form-control" id="description" name="description" rows="4">{{ product.description or '' if product else '' }}</textarea>
+            </div>
+          </div>
         </div>
       </div>
-    </form>
+
+      <!-- Usage & formula -->
+      <div class="card mb-4">
+        <div class="card-header"><h3 class="card-title">Usage &amp; formula</h3></div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-12 col-sm-3">
+              <label class="form-label" for="texture">Texture</label>
+              <select class="form-select" id="texture" name="texture">
+                <option value="">—</option>
+                {% for t in textures %}
+                  <option value="{{ t }}" {% if product and product.texture == t %}selected{% endif %}>{{ t }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-6 col-sm-3">
+              <label class="form-label" for="volume_label">Size label</label>
+              <input type="text" class="form-control" id="volume_label" name="volume_label"
+                     value="{{ product.volume_label or '' if product else '' }}" placeholder="50 ml">
+            </div>
+            <div class="col-6 col-sm-3">
+              <label class="form-label" for="spf">SPF</label>
+              <input type="number" min="0" max="100" class="form-control" id="spf" name="spf"
+                     value="{{ product.spf or '' if product else '' }}" placeholder="50">
+            </div>
+            <div class="col-6 col-sm-3">
+              <label class="form-label" for="pao_months">PAO (months)</label>
+              <input type="number" min="0" max="60" class="form-control" id="pao_months" name="pao_months"
+                     value="{{ product.pao_months or '' if product else '' }}" placeholder="12">
+            </div>
+            <div class="col-12">
+              <label class="form-label" for="how_to_use">How to use</label>
+              <textarea class="form-control" id="how_to_use" name="how_to_use" rows="3">{{ product.how_to_use or '' if product else '' }}</textarea>
+            </div>
+            <div class="col-12">
+              <label class="form-label" for="ingredients_full">Full INCI list</label>
+              <textarea class="form-control" id="ingredients_full" name="ingredients_full" rows="4"
+                        placeholder="Water, Glycerin, Niacinamide, …">{{ product.ingredients_full or '' if product else '' }}</textarea>
+              <div class="form-text">Paste the label exactly, in descending order of concentration. Customers with allergies rely on this.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Targeting -->
+    <div class="col-12 col-xl-5">
+      <div class="card mb-4">
+        <div class="card-header"><h3 class="card-title">Who it's for</h3></div>
+        <div class="card-body">
+          <label class="form-label">Skin types</label>
+          <div class="d-flex flex-wrap gap-1 mb-4">
+            {% for s in skin_types %}
+              <label class="position-relative m-0" style="cursor:pointer;">
+                <input class="chip-check" type="checkbox" name="skin_type_ids" value="{{ s.skin_type_id }}"
+                       {% if s.skin_type_id in selected_skin_types %}checked{% endif %}>
+                <span class="filter-chip">{{ s.name }}</span>
+              </label>
+            {% endfor %}
+          </div>
+
+          <label class="form-label">Concerns it targets</label>
+          <div class="d-flex flex-wrap gap-1">
+            {% for c in concerns %}
+              <label class="position-relative m-0" style="cursor:pointer;">
+                <input class="chip-check" type="checkbox" name="concern_ids" value="{{ c.concern_id }}"
+                       {% if c.concern_id in selected_concerns %}checked{% endif %}>
+                <span class="filter-chip">{{ c.name }}</span>
+              </label>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+      <div class="card mb-4">
+        <div class="card-header"><h3 class="card-title">Claims</h3></div>
+        <div class="card-body">
+          {% set claim_fields = [
+            ('is_vegan', 'Vegan'),
+            ('is_cruelty_free', 'Cruelty-free'),
+            ('is_fragrance_free', 'Fragrance-free'),
+            ('is_non_comedogenic', 'Non-comedogenic'),
+            ('is_dermatologist_tested', 'Dermatologist-tested'),
+          ] %}
+          {% for field, label in claim_fields %}
+            <div class="form-check form-switch mb-2">
+              <input class="form-check-input" type="checkbox" role="switch" id="{{ field }}" name="{{ field }}" value="1"
+                     {% if product and product[field] %}checked{% endif %}>
+              <label class="form-check-label" for="{{ field }}">{{ label }}</label>
+            </div>
+          {% endfor %}
+          <div class="alert alert-warning mt-3 mb-0">
+            <i class="bi bi-exclamation-triangle-fill me-1"></i>
+            Only tick a claim the supplier can evidence — these are regulated marketing statements, not descriptions.
+          </div>
+        </div>
+      </div>
+
+      <div class="card mb-4">
+        <div class="card-body">
+          <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" role="switch" id="is_active" name="is_active" value="1"
+                   {% if not product or product.is_active %}checked{% endif %}>
+            <label class="form-check-label fw-semibold" for="is_active">Published (visible in the storefront)</label>
+          </div>
+          {% if product %}
+            <div class="font-monospace text-secondary small mt-3">
+              Slug: {{ product.slug }}<br>
+              Stock: {{ product.total_stock() }} across {{ product.variants.count() }} variant(s)
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary">{{ 'Update' if product else 'Create' }} Product</button>
+        <a href="{{ url_for('admin.products') }}" class="btn btn-outline-secondary">Cancel</a>
+      </div>
+    </div>
   </div>
-</div>
+</form>
 {% endblock %}

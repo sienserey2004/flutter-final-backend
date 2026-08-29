@@ -1,0 +1,129 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Stock Alerts{% endblock %}
+
+{% block admin_content %}
+<div class="row g-3">
+
+  <!-- Mailbox summary -->
+  <div class="col-lg-3">
+    <div class="card">
+      <div class="card-header"><h3 class="card-title"><i class="bi bi-envelope me-2"></i>Mailbox</h3></div>
+      <div class="card-body">
+        <p class="text-secondary small">
+          Ranked by how many people are waiting — this is your restock priority list, and the
+          closest thing you have to demand data for a sold-out SKU.
+        </p>
+        <div class="d-flex justify-content-between border-top pt-2">
+          <span class="text-secondary">Conversations</span>
+          <span class="font-monospace fw-bold">{{ groups|length }}</span>
+        </div>
+        <div class="d-flex justify-content-between border-top pt-2 mt-2">
+          <span class="text-secondary">Customers waiting</span>
+          <span class="font-monospace fw-bold">{{ total_waiting }}</span>
+        </div>
+      </div>
+    </div>
+    <div class="alert alert-info mt-3">
+      <strong><i class="bi bi-info-circle-fill me-1"></i>No mail is sent yet</strong>
+      <div class="small mt-1">
+        This app has no mail backend configured, so "Notify" records that the notification went
+        out and clears the queue — it doesn't send the email. Wire up Flask-Mail (or your
+        provider's API) in <code>admin.notify_stock_alerts</code> to make it real.
+      </div>
+    </div>
+  </div>
+
+  <!-- Inbox -->
+  <div class="col-lg-9">
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">Waiting on restock</h3>
+      </div>
+      <div class="card-body p-0">
+        {% if groups %}
+        <div class="d-flex align-items-center px-3 py-2 border-bottom">
+          <i class="bi bi-inbox text-secondary me-2"></i>
+          <span class="text-secondary small">Sorted by demand — most-waited-for first</span>
+          <span class="ms-auto text-secondary small">{{ groups|length }} conversation(s)</span>
+        </div>
+        <ul class="list-group list-group-flush mb-0">
+          {% for g in groups %}
+            {% set v = g.variant %}
+            {% set urgent = g.alerts|length >= 5 %}
+            <li class="list-group-item d-flex align-items-center gap-2 {% if urgent %}fw-semibold{% endif %}">
+              <span class="lh-1 {{ 'text-warning' if urgent else 'text-secondary' }}" title="{{ g.alerts|length }} waiting">
+                <i class="bi bi-star{{ '-fill' if urgent else '' }}"></i>
+              </span>
+              <a href="#" class="flex-grow-1 d-flex flex-column flex-md-row gap-md-3 text-decoration-none text-body"
+                 style="min-width:0;" data-bs-toggle="modal" data-bs-target="#mail-{{ v.variant_id }}">
+                <span class="text-truncate mailbox-name" style="min-width:11rem;">{{ v.product.name }}</span>
+                <span class="flex-grow-1 text-truncate" style="min-width:0;">
+                  <span class="badge text-bg-{{ 'danger' if v.stock == 0 else 'secondary' }} me-2">{{ g.alerts|length }}</span>
+                  {{ v.label() }}
+                  <span class="fw-normal text-secondary">&mdash; {{ g.alerts|map(attribute='email')|join(', ') }}</span>
+                </span>
+                <span class="text-secondary small text-md-end" style="min-width:6rem;">
+                  {{ g.alerts[0].created_at.strftime('%b %d') }}
+                </span>
+              </a>
+            </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+          <div class="text-center text-secondary p-5">
+            <i class="bi bi-bell fs-1 d-block mb-3 opacity-50"></i>
+            <p class="mb-0">Nobody is waiting on a sold-out product right now.</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- One "read message" modal per conversation -->
+{% for g in groups %}
+  {% set v = g.variant %}
+  <div class="modal fade" id="mail-{{ v.variant_id }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">{{ v.product.name }} <span class="text-secondary">— {{ v.label() }}</span></h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="d-flex gap-3 mb-3">
+            <div class="text-center flex-fill">
+              <div class="font-monospace fs-4 fw-bold text-warning">{{ g.alerts|length }}</div>
+              <div class="text-secondary small">waiting</div>
+            </div>
+            <div class="text-center flex-fill">
+              <div class="font-monospace fs-4 fw-bold {{ 'text-danger' if v.stock == 0 else '' }}">{{ v.stock }}</div>
+              <div class="text-secondary small">in stock</div>
+            </div>
+          </div>
+          <label class="form-label">Waiting customers</label>
+          <ul class="list-group">
+            {% for a in g.alerts %}
+              <li class="list-group-item d-flex justify-content-between">
+                <span>{{ a.email }}</span>
+                <span class="text-secondary small">{{ a.created_at.strftime('%b %d, %Y') }}</span>
+              </li>
+            {% endfor %}
+          </ul>
+        </div>
+        <div class="modal-footer">
+          <a href="{{ url_for('admin.edit_variant', variant_id=v.variant_id) }}" class="btn btn-outline-secondary">
+            <i class="bi bi-box-seam me-1"></i>Restock
+          </a>
+          <form method="post" action="{{ url_for('admin.notify_stock_alerts', variant_id=v.variant_id) }}"
+                onsubmit="return confirm('Mark all {{ g.alerts|length }} as notified?')">
+            <button class="btn btn-primary" type="submit" {% if v.stock == 0 %}disabled title="Restock before notifying"{% endif %}>
+              <i class="bi bi-send me-1"></i>Notify all
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endfor %}
+{% endblock %}

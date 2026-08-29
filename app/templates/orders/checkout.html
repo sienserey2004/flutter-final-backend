@@ -2,158 +2,306 @@
 {% block title %}Checkout{% endblock %}
 
 {% block content %}
-<div class="page-container" style="max-width:960px;">
+<div class="page-container">
 
   <div class="mb-4">
     <p class="section-title mb-1"><i class="bi bi-lock-fill me-1"></i>Secure Checkout</p>
-    <h2 style="font-weight:800;">Complete Your Order</h2>
+    <h2 style="font-weight:800;margin:0;">Complete your order</h2>
   </div>
 
   <div class="row g-4">
 
-    <!-- Left: Shipping + Payment -->
+    <!-- ── Left: details ────────────────────────────────────────────────── -->
     <div class="col-12 col-lg-7">
+      <form action="{{ url_for('orders.checkout') }}" method="post" id="placeOrderForm">
+        <input type="hidden" name="action" value="place_order">
+        {% if coupon %}<input type="hidden" name="coupon_id" value="{{ coupon.coupon_id }}">{% endif %}
 
-      <!-- Shipping Details -->
-      <div class="card mb-4" style="border-radius:var(--radius-xl);">
-        <div class="card-body p-4">
-          <h5 style="font-weight:800;margin-bottom:1.25rem;">
-            <span style="width:34px;height:34px;border-radius:var(--radius-lg);background:var(--c-primary-lt);
-                         display:inline-flex;align-items:center;justify-content:center;
-                         margin-right:.6rem;">
-              <i class="bi bi-truck" style="color:var(--c-primary);"></i>
-            </span>
-            Shipping Details
-          </h5>
-          <form id="checkoutForm" action="{{ url_for('orders.checkout') }}" method="post">
-            <input type="hidden" name="action" value="place_order"/>
-            <input type="hidden" name="coupon_id" value="{{ coupon.coupon_id if coupon else '' }}"/>
-            <input type="hidden" name="final_total" value="{{ total }}"/>
+        <!-- Delivery address -->
+        <div class="card mb-3" style="border-radius:var(--radius-xl);">
+          <div class="card-body p-4">
+            <h5 style="font-weight:800;margin-bottom:1rem;">
+              <i class="bi bi-geo-alt me-2" style="color:var(--c-primary);"></i>Delivery address
+            </h5>
 
-            <div class="mb-3">
-              <label class="form-label" for="address">Street Address</label>
-              <input type="text" class="form-control" id="address" name="address"
-                     placeholder="e.g. 123 Main Street, Apt 4B" required/>
-            </div>
-            <div class="row g-3 mb-3">
-              <div class="col-8">
-                <label class="form-label" for="city">City / Province</label>
-                <input type="text" class="form-control" id="city" name="city" required/>
+            {% if addresses %}
+              <div class="d-flex flex-column gap-2 mb-3">
+                {% for a in addresses %}
+                  <label class="payment-option d-flex align-items-start gap-2" style="cursor:pointer;">
+                    <input type="radio" name="address_id" value="{{ a.address_id }}"
+                           {% if loop.first %}checked{% endif %}
+                           onchange="toggleNewAddress(false)">
+                    <span>
+                      <strong style="font-size:.9rem;">{{ a.label }}</strong>
+                      {% if a.is_default %}
+                        <span class="badge badge-fresh" style="font-size:.62rem;">Default</span>
+                      {% endif %}
+                      <div style="font-size:.85rem;color:var(--c-muted);">
+                        {{ a.recipient_name }} · {{ a.phone }}<br>{{ a.one_line() }}
+                      </div>
+                    </span>
+                  </label>
+                {% endfor %}
+                <label class="payment-option d-flex align-items-center gap-2" style="cursor:pointer;">
+                  <input type="radio" name="address_id" value="" onchange="toggleNewAddress(true)">
+                  <span style="font-size:.9rem;font-weight:700;">Use a different address</span>
+                </label>
               </div>
-              <div class="col-4">
-                <label class="form-label" for="phone">Phone</label>
-                <input type="tel" class="form-control" id="phone" name="phone"
-                       placeholder="+855 …" required/>
-              </div>
-            </div>
-          </form>
-        </div>
-      </div>
+            {% endif %}
 
-      <!-- Payment Method -->
-      <div class="card" style="border-radius:var(--radius-xl);">
-        <div class="card-body p-4">
-          <h5 style="font-weight:800;margin-bottom:1.25rem;">
-            <span style="width:34px;height:34px;border-radius:var(--radius-lg);background:var(--c-orange-lt);
-                         display:inline-flex;align-items:center;justify-content:center;
-                         margin-right:.6rem;">
-              <i class="bi bi-credit-card" style="color:var(--c-orange);"></i>
-            </span>
-            Payment Method
-          </h5>
-          {% for method, icon in [('Cash on Delivery','💵'),('Credit Card','💳'),('PayPal','🅿️'),('Bank Transfer','🏦'),('KHQR','📱')] %}
-          <label class="payment-option">
-            <input type="radio" name="payment_method" value="{{ method }}" form="checkoutForm"
-                   {% if loop.first %}checked{% endif %}/>
-            <span style="font-size:1.2rem;">{{ icon }}</span>
-            <span style="font-size:.9rem;font-weight:700;">{{ method }}</span>
-          </label>
-          {% endfor %}
+            <div id="newAddressFields" {% if addresses %}style="display:none;"{% endif %}>
+              <div class="row g-3">
+                <div class="col-12 col-sm-6">
+                  <label class="form-label" for="recipient_name">Recipient name</label>
+                  <input type="text" class="form-control" id="recipient_name" name="recipient_name"
+                         value="{{ current_user.name }}">
+                </div>
+                <div class="col-12 col-sm-6">
+                  <label class="form-label" for="phone">Phone</label>
+                  <input type="tel" class="form-control" id="phone" name="phone"
+                         value="{{ current_user.phone or '' }}">
+                </div>
+                <div class="col-12">
+                  <label class="form-label" for="address">Street address</label>
+                  <input type="text" class="form-control" id="address" name="address"
+                         placeholder="House number, street, district">
+                </div>
+                <div class="col-12 col-sm-5">
+                  <label class="form-label" for="city">City</label>
+                  <input type="text" class="form-control" id="city" name="city">
+                </div>
+                <div class="col-6 col-sm-3">
+                  <label class="form-label" for="postal_code">Postal code</label>
+                  <input type="text" class="form-control" id="postal_code" name="postal_code">
+                </div>
+                <div class="col-6 col-sm-4">
+                  <label class="form-label" for="country">Country</label>
+                  <input type="text" class="form-control" id="country" name="country" value="Cambodia">
+                </div>
+              </div>
+              <p class="mt-2 mb-0" style="font-size:.78rem;">
+                Reusing this next time?
+                <a href="{{ url_for('account.new_address') }}">Save it to your address book</a>.
+              </p>
+            </div>
+          </div>
         </div>
-      </div>
+
+        <!-- Delivery method -->
+        <div class="card mb-3" style="border-radius:var(--radius-xl);">
+          <div class="card-body p-4">
+            <h5 style="font-weight:800;margin-bottom:1rem;">
+              <i class="bi bi-truck me-2" style="color:var(--c-primary);"></i>Delivery method
+            </h5>
+            {% if methods %}
+              <div class="d-flex flex-column gap-2">
+                {% for m in methods %}
+                  {% set fee = m.fee_for(quote.subtotal - quote.discount) %}
+                  <label class="payment-option d-flex align-items-center gap-2" style="cursor:pointer;">
+                    <input type="radio" name="shipping_method_id" value="{{ m.method_id }}"
+                           {% if selected_method_id == m.method_id %}checked{% endif %}
+                           onchange="reprice(this.value)">
+                    <span class="flex-grow-1">
+                      <strong style="font-size:.9rem;">{{ m.name }}</strong>
+                      <span style="font-size:.8rem;color:var(--c-muted);"> · {{ m.eta_label() }}</span>
+                      {% if m.description %}
+                        <div style="font-size:.8rem;color:var(--c-muted);">{{ m.description }}</div>
+                      {% endif %}
+                      {% if m.free_over and fee == 0 %}
+                        <div style="font-size:.78rem;color:var(--c-primary);font-weight:700;">
+                          Free — your order is over ${{ "%.2f"|format(m.free_over|float) }}
+                        </div>
+                      {% elif m.free_over %}
+                        <div style="font-size:.78rem;color:var(--c-muted);">
+                          Free over ${{ "%.2f"|format(m.free_over|float) }}
+                        </div>
+                      {% endif %}
+                    </span>
+                    <span style="font-family:var(--font-mono);font-weight:700;
+                                 color:{% if fee == 0 %}var(--c-primary){% else %}var(--c-text){% endif %};">
+                      {% if fee == 0 %}FREE{% else %}${{ "%.2f"|format(fee) }}{% endif %}
+                    </span>
+                  </label>
+                {% endfor %}
+              </div>
+            {% else %}
+              <p class="mb-0" style="font-size:.88rem;">
+                No delivery methods configured — an admin can add them under
+                Admin → Shipping Methods.
+              </p>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Payment -->
+        <div class="card mb-3" style="border-radius:var(--radius-xl);">
+          <div class="card-body p-4">
+            <h5 style="font-weight:800;margin-bottom:1rem;">
+              <i class="bi bi-credit-card me-2" style="color:var(--c-orange);"></i>Payment method
+            </h5>
+            <div class="d-flex flex-column gap-2">
+              <label class="payment-option d-flex align-items-center gap-2" style="cursor:pointer;">
+                <input type="radio" name="payment_method" value="KHQR" checked>
+                <span><strong style="font-size:.9rem;">KHQR</strong>
+                  <div style="font-size:.8rem;color:var(--c-muted);">
+                    Scan to pay from any Bakong-connected bank app.</div>
+                </span>
+              </label>
+              <label class="payment-option d-flex align-items-center gap-2" style="cursor:pointer;">
+                <input type="radio" name="payment_method" value="Cash">
+                <span><strong style="font-size:.9rem;">Cash on delivery</strong>
+                  <div style="font-size:.8rem;color:var(--c-muted);">Pay the courier on arrival.</div>
+                </span>
+              </label>
+              <label class="payment-option d-flex align-items-center gap-2" style="cursor:pointer;">
+                <input type="radio" name="payment_method" value="Credit Card">
+                <span><strong style="font-size:.9rem;">Credit / debit card</strong></span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-orange btn-lg w-100">
+          <i class="bi bi-lock-fill me-2"></i>
+          Place order — ${{ "%.2f"|format(quote.total) }}
+        </button>
+      </form>
     </div>
 
-    <!-- Right: Summary + Coupon -->
+    <!-- ── Right: summary ───────────────────────────────────────────────── -->
     <div class="col-12 col-lg-5">
-
-      <!-- Coupon -->
-      <div class="card mb-3" style="border-radius:var(--radius-xl);">
-        <div class="card-body p-4">
-          <h6 style="font-weight:800;margin-bottom:1rem;">
-            <i class="bi bi-tag-fill me-2" style="color:var(--c-yellow);"></i>Promo Code
-          </h6>
-          <form action="{{ url_for('orders.checkout') }}" method="post">
-            <input type="hidden" name="action" value="apply_coupon"/>
-            <div class="d-flex gap-2">
-              <input type="text" class="form-control" name="coupon_code"
-                     value="{{ coupon_code }}" placeholder="e.g. FRESH20"
-                     style="font-family:var(--font-mono);text-transform:uppercase;font-weight:700;"/>
-              <button type="submit" class="btn btn-outline" style="white-space:nowrap;">Apply</button>
-            </div>
-          </form>
-          {% if coupon %}
-          <div class="alert alert-success mt-2 mb-0" style="font-size:.85rem;">
-            <i class="bi bi-check-circle-fill"></i>
-            <strong>{{ coupon.code }}</strong> applied — saving ${{ "%.2f"|format(discount) }}!
-          </div>
-          {% endif %}
-        </div>
-      </div>
-
-      <!-- Order summary -->
-      <div class="card mb-3" style="border-radius:var(--radius-xl);border:2px solid var(--c-border);">
+      <div class="card" style="border-radius:var(--radius-xl);border:2px solid var(--c-border);
+                               position:sticky;top:calc(var(--nav-h) + 1rem);">
         <div class="card-body p-4">
           <h5 style="font-weight:800;margin-bottom:1.25rem;">
-            <i class="bi bi-receipt me-2" style="color:var(--c-primary);"></i>Order Summary
+            <i class="bi bi-receipt me-2" style="color:var(--c-primary);"></i>Order summary
           </h5>
 
-          {% for item in cart.items %}
-          <div class="d-flex justify-content-between mb-2" style="font-size:.85rem;">
-            <span style="color:var(--c-muted);">
-              {{ item.variant.product.name }}
-              {% if item.variant.size %} · {{ item.variant.size }}{% endif %}
-              {% if item.variant.color %} / {{ item.variant.color }}{% endif %}
-              <span style="color:var(--c-primary);font-weight:700;"> × {{ item.quantity }}</span>
-            </span>
-            <span style="font-family:var(--font-mono);font-weight:600;flex-shrink:0;margin-left:.5rem;">
-              ${{ "%.2f"|format(item.subtotal()) }}
-            </span>
+          <div class="d-flex flex-column gap-3 mb-3">
+            {% for item in cart.items %}
+              <div class="d-flex gap-2 align-items-center">
+                <div style="width:48px;height:48px;border-radius:var(--radius);overflow:hidden;
+                            background:var(--c-primary-lt);flex-shrink:0;">
+                  {% if item.variant.image_url() %}
+                    <img src="{{ item.variant.image_url() }}" alt=""
+                         style="width:100%;height:100%;object-fit:cover;">
+                  {% endif %}
+                </div>
+                <div class="flex-grow-1" style="min-width:0;">
+                  <div style="font-size:.85rem;font-weight:700;color:var(--c-text);line-height:1.3;">
+                    {{ item.variant.product.name }}
+                  </div>
+                  <div style="font-size:.75rem;color:var(--c-muted);">
+                    {{ item.variant.label() }} × {{ item.quantity }}
+                  </div>
+                </div>
+                <span style="font-family:var(--font-mono);font-size:.88rem;font-weight:600;">
+                  ${{ "%.2f"|format(item.subtotal()) }}
+                </span>
+              </div>
+            {% endfor %}
           </div>
-          {% endfor %}
 
-          <hr class="divider"/>
+          <hr class="divider">
 
-          {% if discount > 0 %}
+          <!-- Coupon -->
+          <form action="{{ url_for('orders.checkout') }}" method="post" class="mb-3">
+            <input type="hidden" name="action" value="apply_coupon">
+            {% if selected_method_id %}
+              <input type="hidden" name="shipping_method_id" value="{{ selected_method_id }}">
+            {% endif %}
+            <label class="form-label" for="coupon_code">Discount code</label>
+            <div class="d-flex gap-2">
+              <input type="text" class="form-control" id="coupon_code" name="coupon_code"
+                     placeholder="e.g. WELCOME10" value="{{ coupon_code }}"
+                     style="text-transform:uppercase;">
+              <button class="btn btn-outline" type="submit">Apply</button>
+            </div>
+            {% if coupon %}
+              <div class="mt-2" style="font-size:.82rem;color:var(--c-primary);font-weight:700;">
+                <i class="bi bi-check-circle-fill me-1"></i>{{ coupon.code }} applied
+              </div>
+            {% endif %}
+          </form>
+
+          <hr class="divider">
+
           <div class="d-flex justify-content-between mb-2" style="font-size:.9rem;">
-            <span style="color:var(--c-success);font-weight:600;">💚 Discount</span>
-            <span style="font-family:var(--font-mono);color:var(--c-success);font-weight:700;">
-              −${{ "%.2f"|format(discount) }}
+            <span style="color:var(--c-muted);">Subtotal ({{ cart.item_count() }} items)</span>
+            <span style="font-family:var(--font-mono);font-weight:600;">
+              ${{ "%.2f"|format(quote.subtotal) }}
             </span>
           </div>
+          {% if quote.discount > 0 %}
+            <div class="d-flex justify-content-between mb-2" style="font-size:.9rem;">
+              <span style="color:var(--c-muted);">Discount</span>
+              <span style="font-family:var(--font-mono);font-weight:600;color:var(--c-primary);">
+                −${{ "%.2f"|format(quote.discount) }}
+              </span>
+            </div>
+          {% endif %}
+          <div class="d-flex justify-content-between mb-2" style="font-size:.9rem;">
+            <span style="color:var(--c-muted);">Delivery</span>
+            <span style="font-family:var(--font-mono);font-weight:600;">
+              {% if quote.shipping_fee == 0 %}
+                <span style="color:var(--c-primary);">FREE</span>
+              {% else %}${{ "%.2f"|format(quote.shipping_fee) }}{% endif %}
+            </span>
+          </div>
+          {% if quote.tax > 0 %}
+            <div class="d-flex justify-content-between mb-2" style="font-size:.9rem;">
+              <span style="color:var(--c-muted);">Tax</span>
+              <span style="font-family:var(--font-mono);font-weight:600;">
+                ${{ "%.2f"|format(quote.tax) }}
+              </span>
+            </div>
           {% endif %}
 
-          <div class="d-flex justify-content-between">
-            <span style="font-weight:800;font-size:1rem;">Total</span>
-            <span style="font-family:var(--font-mono);font-size:1.4rem;font-weight:800;color:var(--c-primary);">
-              ${{ "%.2f"|format(total) }}
+          <hr class="divider">
+
+          <div class="d-flex justify-content-between align-items-baseline">
+            <span style="font-weight:700;font-size:1rem;">Total</span>
+            <span style="font-family:var(--font-mono);font-size:1.5rem;font-weight:800;color:var(--c-primary);">
+              ${{ "%.2f"|format(quote.total) }}
             </span>
           </div>
+
+          <a href="{{ url_for('cart.view_cart') }}" class="btn btn-ghost btn-sm w-100 mt-3">
+            <i class="bi bi-arrow-left me-1"></i> Back to cart
+          </a>
         </div>
       </div>
-
-      <button type="submit" form="checkoutForm" class="btn btn-primary btn-lg w-100"
-              style="font-size:1.05rem;">
-        <i class="bi bi-check-circle-fill me-2"></i> Place Order
-      </button>
-      <a href="{{ url_for('cart.view_cart') }}" class="btn btn-ghost w-100 mt-2">
-        <i class="bi bi-arrow-left me-1"></i> Back to Cart
-      </a>
-
-      <div class="d-flex justify-content-center gap-3 mt-3" style="font-size:.75rem;color:var(--c-muted);">
-        <span><i class="bi bi-shield-lock me-1"></i>Secure & encrypted</span>
-        <span><i class="bi bi-truck me-1"></i>Fast delivery</span>
-      </div>
     </div>
+
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleNewAddress(show) {
+  const box = document.getElementById('newAddressFields');
+  if (box) box.style.display = show ? '' : 'none';
+}
+
+// Changing the delivery method changes the total, so re-render the summary
+// server-side rather than guessing the fee in the browser.
+function reprice(methodId) {
+  const form = document.createElement('form');
+  form.method = 'post';
+  form.action = "{{ url_for('orders.checkout') }}";
+  const fields = {
+    action: 'update_shipping',
+    coupon_code: document.getElementById('coupon_code').value,
+    shipping_method_id: methodId,
+  };
+  for (const [k, v] of Object.entries(fields)) {
+    const input = document.createElement('input');
+    input.type = 'hidden'; input.name = k; input.value = v;
+    form.appendChild(input);
+  }
+  document.body.appendChild(form);
+  form.submit();
+}
+</script>
 {% endblock %}
