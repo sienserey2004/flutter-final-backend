@@ -1,252 +1,139 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>{% block title %}Shop{% endblock %} — {{ STORE_NAME }}</title>
-
-  <!-- Bootstrap 5 -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"/>
-  <!-- Bootstrap Icons -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"/>
-  <!-- Skincare UI -->
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}"/>
-
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="{{ STORE_TAGLINE }}">
+  <title>{% block title %}Shop{% endblock %} · {{ STORE_NAME }}</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
   {% block head %}{% endblock %}
 </head>
 <body>
+  <div class="store-announcement">
+    <div class="store-shell d-flex align-items-center justify-content-center justify-content-md-between gap-3">
+      <span><i class="bi bi-truck me-2"></i>Free delivery on orders over $50</span>
+      <div class="d-none d-md-flex gap-4">
+        <span><i class="bi bi-arrow-counterclockwise me-2"></i>30-day returns</span>
+        <span><i class="bi bi-shield-check me-2"></i>Secure checkout</span>
+      </div>
+    </div>
+  </div>
 
-<!-- ── Navbar ─────────────────────────────────────────────────────────────── -->
-<nav class="navbar navbar-expand-lg">
-  <div class="container-fluid d-flex align-items-center" style="max-width:1320px;">
-
-    <!-- Mobile: toggler + wordmark -->
-    <button class="navbar-toggler border-0 shadow-none d-lg-none p-0 me-3" type="button"
-            data-bs-toggle="collapse" data-bs-target="#navMain" aria-label="Menu">
-      <i class="bi bi-list" style="font-size:1.6rem; color:#fff;"></i>
-    </button>
-    <a class="navbar-brand d-lg-none" href="{{ url_for('main.index') }}">
-      <span class="brand-icon">✦</span>{{ STORE_NAME }}
-    </a>
-
-    <div class="collapse navbar-collapse align-items-center" id="navMain">
-
-      <!-- Left -->
-      <ul class="navbar-nav nav-side align-items-lg-center gap-lg-1">
-        <li class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle {% if request.endpoint=='products.list_products' %}active{% endif %}"
-             href="#" data-bs-toggle="dropdown">Shop</a>
-          <ul class="dropdown-menu shadow border-0"
-              style="border:1.5px solid var(--c-border) !important;border-radius:var(--radius-lg);min-width:240px;">
-            <li><a class="dropdown-item" href="{{ url_for('products.list_products') }}">
-              <i class="bi bi-grid me-2" style="color:var(--c-primary);"></i>All products</a></li>
-            <li><a class="dropdown-item" href="{{ url_for('categories.list_categories') }}">
-              <i class="bi bi-diagram-3 me-2" style="color:var(--c-primary);"></i>Browse categories</a></li>
-            <li><hr class="dropdown-divider" style="border-color:var(--c-border-lt);"></li>
-            {% for cat in nav_categories %}
-              <li><a class="dropdown-item" href="{{ url_for('products.list_products', category=cat.category_id) }}">
-                {{ cat.name }}</a></li>
-              {% for child in cat.children %}
-                <li><a class="dropdown-item ps-4" style="font-weight:500;color:var(--c-muted);"
-                       href="{{ url_for('products.list_products', category=child.category_id) }}">
-                  {{ child.name }}</a></li>
-              {% endfor %}
-            {% endfor %}
-          </ul>
-        </li>
-
-        <li class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle {% if request.endpoint=='products.by_concern' %}active{% endif %}"
-             href="#" data-bs-toggle="dropdown">Concerns</a>
-          <ul class="dropdown-menu shadow border-0"
-              style="border:1.5px solid var(--c-border) !important;border-radius:var(--radius-lg);min-width:240px;">
-            {% for c in nav_concerns %}
-              <li><a class="dropdown-item" href="{{ url_for('products.by_concern', slug=c.slug) }}">
-                <span class="me-2">{{ c.icon or '•' }}</span>{{ c.name }}</a></li>
-            {% endfor %}
-          </ul>
-        </li>
-
-        <li class="nav-item">
-          <a class="nav-link {% if request.endpoint=='products.bundles' %}active{% endif %}"
-             href="{{ url_for('products.bundles') }}">Kits</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link {% if request.endpoint=='main.ingredient_glossary' %}active{% endif %}"
-             href="{{ url_for('main.ingredient_glossary') }}">Ingredients</a>
-        </li>
-      </ul>
-
-      <!-- Centre wordmark (desktop) -->
-      <a class="navbar-brand nav-mid d-none d-lg-flex mx-3" href="{{ url_for('main.index') }}">
-        <span class="brand-icon">✦</span>{{ STORE_NAME }}
+  <nav class="navbar navbar-expand-lg marketplace-nav">
+    <div class="store-shell w-100 d-flex align-items-center">
+      <a class="navbar-brand" href="{{ url_for('main.index') }}" aria-label="{{ STORE_NAME }} home">
+        <span class="brand-icon"><i class="bi bi-bag-fill"></i></span>
+        <span>{{ STORE_NAME }}</span>
       </a>
+      <button class="navbar-toggler border-0 shadow-none ms-auto" type="button"
+              data-bs-toggle="collapse" data-bs-target="#storeNavigation" aria-label="Toggle navigation">
+        <i class="bi bi-list"></i>
+      </button>
 
-      <!-- Right -->
-      <ul class="navbar-nav nav-side align-items-lg-center justify-content-lg-end gap-lg-1">
-        <li class="nav-item">
-          <a class="nav-link {% if request.endpoint=='products.for_you' %}active{% endif %}"
-             href="{{ url_for('products.for_you') }}">For You</a>
-        </li>
-
-        {% if current_user.is_authenticated %}
-          <li class="nav-item">
-            <a class="nav-link d-flex align-items-center" href="{{ url_for('account.wishlist') }}"
-               title="Wishlist" aria-label="Wishlist">
-              <i class="bi bi-heart" style="font-size:1.05rem;"></i>
-              {% if current_user.wishlist and current_user.wishlist.item_count() > 0 %}
-                <span class="cart-badge">{{ current_user.wishlist.item_count() }}</span>
-              {% endif %}
-            </a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link d-flex align-items-center" href="{{ url_for('cart.view_cart') }}"
-               title="Cart" aria-label="Cart">
-              <i class="bi bi-bag" style="font-size:1.05rem;"></i>
-              {% if current_user.cart and current_user.cart.item_count() > 0 %}
-                <span class="cart-badge">{{ current_user.cart.item_count() }}</span>
-              {% endif %}
-            </a>
-          </li>
-
+      <div class="collapse navbar-collapse" id="storeNavigation">
+        <ul class="navbar-nav align-items-lg-center ms-lg-4 me-lg-3">
+          <li class="nav-item"><a class="nav-link {% if request.endpoint == 'products.list_products' and not request.args %}active{% endif %}" href="{{ url_for('products.list_products') }}">Shop</a></li>
+          <li class="nav-item"><a class="nav-link" href="{{ url_for('products.list_products', sort='newest') }}">New arrivals</a></li>
+          <li class="nav-item"><a class="nav-link" href="{{ url_for('products.list_products', on_sale=1) }}">Deals</a></li>
           <li class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle d-flex align-items-center gap-2"
-               href="#" data-bs-toggle="dropdown">
-              <span style="width:28px;height:28px;border-radius:999px;background:var(--c-lime);
-                           display:inline-flex;align-items:center;justify-content:center;
-                           font-size:.78rem;font-weight:800;color:var(--c-lime-ink);">
-                {{ current_user.name[0].upper() }}
-              </span>
-            </a>
-            <ul class="dropdown-menu dropdown-menu-end shadow border-0"
-                style="border:1.5px solid var(--c-border) !important;border-radius:var(--radius-lg);min-width:215px;">
-              <li><a class="dropdown-item" href="{{ url_for('account.overview') }}">
-                <i class="bi bi-person me-2" style="color:var(--c-primary);"></i>My account</a></li>
-              <li><a class="dropdown-item" href="{{ url_for('account.skin_profile') }}">
-                <i class="bi bi-droplet me-2" style="color:var(--c-primary);"></i>Skin profile</a></li>
-              <li><a class="dropdown-item" href="{{ url_for('orders.my_orders') }}">
-                <i class="bi bi-receipt me-2" style="color:var(--c-primary);"></i>My orders</a></li>
-              <li><a class="dropdown-item" href="{{ url_for('account.subscriptions') }}">
-                <i class="bi bi-arrow-repeat me-2" style="color:var(--c-primary);"></i>Subscriptions</a></li>
-              <li><a class="dropdown-item" href="{{ url_for('account.addresses') }}">
-                <i class="bi bi-geo-alt me-2" style="color:var(--c-primary);"></i>Addresses</a></li>
-              <li><a class="dropdown-item" href="{{ url_for('account.returns') }}">
-                <i class="bi bi-arrow-return-left me-2" style="color:var(--c-primary);"></i>Returns</a></li>
-              {% if current_user.is_admin() %}
-              <li><hr class="dropdown-divider" style="border-color:var(--c-border-lt);"></li>
-              <li><a class="dropdown-item" href="{{ url_for('admin.dashboard') }}">
-                <i class="bi bi-grid me-2" style="color:var(--c-orange-dk);"></i>Admin panel</a></li>
-              {% endif %}
-              <li><hr class="dropdown-divider" style="border-color:var(--c-border-lt);"></li>
-              <li>
-                <form action="{{ url_for('auth.logout') }}" method="post" class="d-inline">
-                  <button class="dropdown-item text-danger" type="submit">
-                    <i class="bi bi-box-arrow-right me-2"></i>Sign out
-                  </button>
-                </form>
-              </li>
+            <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">Categories</a>
+            <ul class="dropdown-menu store-dropdown shadow-lg border-0">
+              <li><a class="dropdown-item" href="{{ url_for('categories.list_categories') }}"><i class="bi bi-grid me-2"></i>Browse all categories</a></li>
+              {% if nav_categories %}<li><hr class="dropdown-divider"></li>{% endif %}
+              {% for cat in nav_categories %}
+                <li><a class="dropdown-item" href="{{ url_for('products.list_products', category=cat.category_id) }}">{{ cat.name }}</a></li>
+              {% endfor %}
             </ul>
           </li>
+        </ul>
 
-          <li class="nav-item ms-lg-2 mt-2 mt-lg-0">
-            <a class="btn btn-primary btn-sm" href="{{ url_for('products.list_products') }}">
-              Shop now
-            </a>
-          </li>
-        {% else %}
-          <li class="nav-item">
-            <a class="nav-link" href="{{ url_for('auth.login') }}">Log in</a>
-          </li>
-          <li class="nav-item ms-lg-2 mt-2 mt-lg-0">
-            <a class="btn btn-primary btn-sm" href="{{ url_for('auth.register') }}">
-              Shop now
-            </a>
-          </li>
-        {% endif %}
-      </ul>
-    </div>
-  </div>
-</nav>
+        <form class="nav-search mx-lg-auto my-3 my-lg-0" method="get" action="{{ url_for('products.list_products') }}" role="search">
+          <i class="bi bi-search"></i>
+          <input type="search" name="q" value="{{ request.args.get('q', '') }}" placeholder="Search products, brands and more" aria-label="Search products">
+        </form>
 
-<!-- ── Flash Messages ─────────────────────────────────────────────────────── -->
-{% with msgs = get_flashed_messages(with_categories=true) %}
-  {% if msgs %}
-    <div style="position:fixed;top:84px;right:1.5rem;z-index:999;max-width:380px;">
-      {% for cat, msg in msgs %}
-        <div class="alert alert-{{ cat }} mb-2 shadow" role="alert"
-             style="animation: slideIn .25s ease;">
-          <i class="bi bi-{% if cat=='success' %}check-circle-fill{% elif cat=='danger' %}x-circle-fill{% elif cat=='warning' %}exclamation-triangle-fill{% else %}info-circle-fill{% endif %}"></i>
-          <span>{{ msg }}</span>
-          <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"
-                  style="font-size:.75rem;"></button>
+        <div class="nav-actions ms-lg-3">
+          {% if current_user.is_authenticated %}
+            <a class="nav-action" href="{{ url_for('account.wishlist') }}" aria-label="Wishlist">
+              <i class="bi bi-heart"></i><span class="d-lg-none">Wishlist</span>
+              {% if current_user.wishlist and current_user.wishlist.item_count() > 0 %}<span class="cart-badge">{{ current_user.wishlist.item_count() }}</span>{% endif %}
+            </a>
+            <a class="nav-action" href="{{ url_for('cart.view_cart') }}" aria-label="Shopping cart">
+              <i class="bi bi-bag"></i><span class="d-lg-none">Cart</span>
+              {% if current_user.cart and current_user.cart.item_count() > 0 %}<span class="cart-badge">{{ current_user.cart.item_count() }}</span>{% endif %}
+            </a>
+            <div class="dropdown">
+              <a class="nav-action account-action dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                <span class="account-avatar">{{ current_user.name[0].upper() }}</span>
+                <span class="account-copy d-none d-xl-block"><small>Hello,</small><strong>{{ current_user.name.split()[0] }}</strong></span>
+              </a>
+              <ul class="dropdown-menu dropdown-menu-end store-dropdown shadow-lg border-0">
+                <li><a class="dropdown-item" href="{{ url_for('account.overview') }}"><i class="bi bi-person me-2"></i>My account</a></li>
+                <li><a class="dropdown-item" href="{{ url_for('orders.my_orders') }}"><i class="bi bi-box-seam me-2"></i>My orders</a></li>
+                <li><a class="dropdown-item" href="{{ url_for('account.addresses') }}"><i class="bi bi-geo-alt me-2"></i>Addresses</a></li>
+                {% if current_user.is_admin() %}<li><hr class="dropdown-divider"></li><li><a class="dropdown-item" href="{{ url_for('admin.dashboard') }}"><i class="bi bi-speedometer2 me-2"></i>Admin panel</a></li>{% endif %}
+                <li><hr class="dropdown-divider"></li>
+                <li><form action="{{ url_for('auth.logout') }}" method="post"><button class="dropdown-item text-danger" type="submit"><i class="bi bi-box-arrow-right me-2"></i>Sign out</button></form></li>
+              </ul>
+            </div>
+          {% else %}
+            <a class="nav-action" href="{{ url_for('auth.login') }}"><i class="bi bi-person"></i><span>Sign in</span></a>
+            <a class="btn btn-primary btn-sm ms-lg-1" href="{{ url_for('auth.register') }}">Create account</a>
+          {% endif %}
         </div>
-      {% endfor %}
-    </div>
-  {% endif %}
-{% endwith %}
-
-<!-- ── Main ───────────────────────────────────────────────────────────────── -->
-<main>
-  {% block content %}{% endblock %}
-</main>
-
-<!-- ── Footer ─────────────────────────────────────────────────────────────── -->
-<footer class="site-footer">
-  <div class="footer-main">
-
-    <div>
-      <div class="footer-brand">
-        <span class="brand-icon-sm">✦</span>
-        {{ STORE_NAME }}
-      </div>
-      <p class="footer-tagline">{{ STORE_TAGLINE }}</p>
-      <div class="d-flex gap-2 mt-3 flex-wrap">
-        <span style="background:rgba(255,255,255,.08);border-radius:999px;padding:.35rem .8rem;font-size:.75rem;color:rgba(255,255,255,.55);">Cruelty-free</span>
-        <span style="background:rgba(255,255,255,.08);border-radius:999px;padding:.35rem .8rem;font-size:.75rem;color:rgba(255,255,255,.55);">Full INCI listed</span>
       </div>
     </div>
+  </nav>
 
-    <div>
-      <p class="footer-heading">Shop</p>
-      <a class="footer-link" href="{{ url_for('products.list_products') }}">All products</a>
-      <a class="footer-link" href="{{ url_for('products.bundles') }}">Routine kits</a>
-      <a class="footer-link" href="{{ url_for('main.ingredient_glossary') }}">Ingredient glossary</a>
-      {% if current_user.is_authenticated %}
-        <a class="footer-link" href="{{ url_for('account.wishlist') }}">Wishlist</a>
-        <a class="footer-link" href="{{ url_for('orders.my_orders') }}">Your orders</a>
-      {% else %}
-        <a class="footer-link" href="{{ url_for('auth.login') }}">Log in</a>
-        <a class="footer-link" href="{{ url_for('auth.register') }}">Create account</a>
-      {% endif %}
+  {% with msgs = get_flashed_messages(with_categories=true) %}
+    {% if msgs %}
+      <div class="toast-stack">
+        {% for cat, msg in msgs %}
+          <div class="alert alert-{{ cat }} shadow" role="alert">
+            <i class="bi bi-{% if cat == 'success' %}check-circle-fill{% elif cat == 'danger' %}x-circle-fill{% elif cat == 'warning' %}exclamation-triangle-fill{% else %}info-circle-fill{% endif %}"></i>
+            <span>{{ msg }}</span><button type="button" class="btn-close ms-auto" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <main>{% block content %}{% endblock %}</main>
+
+  <footer class="site-footer marketplace-footer">
+    <div class="store-shell footer-main">
+      <div class="footer-intro">
+        <div class="footer-brand"><span class="brand-icon-sm"><i class="bi bi-bag-fill"></i></span>{{ STORE_NAME }}</div>
+        <p class="footer-tagline">{{ STORE_TAGLINE }}</p>
+        <div class="footer-socials"><a href="#" aria-label="Instagram"><i class="bi bi-instagram"></i></a><a href="#" aria-label="Facebook"><i class="bi bi-facebook"></i></a><a href="#" aria-label="TikTok"><i class="bi bi-tiktok"></i></a></div>
+      </div>
+      <div>
+        <p class="footer-heading">Shop</p>
+        <a class="footer-link" href="{{ url_for('products.list_products') }}">All products</a>
+        <a class="footer-link" href="{{ url_for('products.list_products', sort='newest') }}">New arrivals</a>
+        <a class="footer-link" href="{{ url_for('products.list_products', on_sale=1) }}">Deals</a>
+        <a class="footer-link" href="{{ url_for('categories.list_categories') }}">Categories</a>
+      </div>
+      <div>
+        <p class="footer-heading">Your account</p>
+        {% if current_user.is_authenticated %}
+          <a class="footer-link" href="{{ url_for('account.overview') }}">Account overview</a><a class="footer-link" href="{{ url_for('orders.my_orders') }}">Orders</a><a class="footer-link" href="{{ url_for('account.wishlist') }}">Wishlist</a><a class="footer-link" href="{{ url_for('account.returns') }}">Returns</a>
+        {% else %}
+          <a class="footer-link" href="{{ url_for('auth.login') }}">Sign in</a><a class="footer-link" href="{{ url_for('auth.register') }}">Create account</a>
+        {% endif %}
+      </div>
+      <div class="footer-newsletter">
+        <p class="footer-heading">Stay in the loop</p><p class="footer-tagline">Be first to hear about new products and limited offers.</p>
+        <a class="btn btn-light btn-sm mt-3" href="{{ url_for('auth.register') }}">Join our community <i class="bi bi-arrow-right"></i></a>
+      </div>
     </div>
+    <div class="store-shell footer-bottom"><span>&copy; {{ now().year }} {{ STORE_NAME }}. All rights reserved.</span><span class="d-flex align-items-center gap-3"><i class="bi bi-credit-card"></i><i class="bi bi-paypal"></i><i class="bi bi-qr-code"></i></span></div>
+  </footer>
 
-    <div>
-      <p class="footer-heading">Shop by concern</p>
-      {% for c in nav_concerns[:6] %}
-        <a class="footer-link" href="{{ url_for('products.by_concern', slug=c.slug) }}">{{ c.name }}</a>
-      {% endfor %}
-    </div>
-
-    <div>
-      <p class="footer-heading">Good to know</p>
-      <p class="footer-tagline">
-        Every product lists its full INCI, its period-after-opening, and the skin
-        types it was formulated for. Patch test new actives on your inner forearm
-        for 24 hours before applying to the face.
-      </p>
-      <p class="footer-tagline mt-2">Mon–Sat: 9am – 7pm</p>
-    </div>
-
-  </div>
-  <div class="footer-bottom">
-    <span>✦ <strong style="color:rgba(255,255,255,.55);">{{ STORE_NAME }}</strong> &copy; {{ now().year }}
-      — Information on this site is not medical advice. See a dermatologist for a persistent condition.</span>
-  </div>
-</footer>
-
-<!-- Bootstrap JS -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-
-{% block scripts %}{% endblock %}
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  {% block scripts %}{% endblock %}
 </body>
 </html>

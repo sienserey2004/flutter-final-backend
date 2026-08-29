@@ -181,7 +181,7 @@ def create_app(config_name='default'):
     # Jinja2 globals
     from datetime import datetime
     app.jinja_env.globals['now'] = datetime.utcnow
-    app.jinja_env.globals['STORE_NAME'] = app.config.get('STORE_NAME', 'Aurea Skin')
+    app.jinja_env.globals['STORE_NAME'] = app.config.get('STORE_NAME', 'NovaMart')
     app.jinja_env.globals['STORE_TAGLINE'] = app.config.get('STORE_TAGLINE', '')
 
     @app.context_processor
@@ -229,7 +229,7 @@ def create_app(config_name='default'):
             return api_error(f'Method {request.method} not allowed for this endpoint.',
                              405, allowed_methods=allowed)
         return render_template('error.html', code=405, title='Method Not Allowed',
-                               message='That action isn't available here.'), 405
+                               message="That action isn't available here."), 405
 
     @app.errorhandler(413)
     def payload_too_large(e):

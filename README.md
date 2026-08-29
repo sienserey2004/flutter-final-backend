@@ -1,223 +1,336 @@
-# 🌿 FreshMart — Fresh Fruit E-Commerce
+# 🌿 Aurea Skin — Skincare E-Commerce Backend
 
-A full-stack e-commerce application built with **Flask**, **Jinja2**, **Bootstrap 5**, and **PostgreSQL**, designed for fresh fruit and produce online stores.
+A Flask backend that serves **two front ends from one codebase**: a server-rendered
+storefront + admin panel for the browser, and a **JSON REST API** for the Flutter
+mobile app.
 
-**Theme:** Fresh, organic, and inviting UI — warm cream background, leaf-green accents, citrus-orange CTAs, rounded cards, and a Nunito typeface for a friendly, natural feel.
+Every route answers in the caller's language. `GET /products/` renders an HTML
+page; `GET /api/products/` returns the same data as JSON. One set of business
+rules, no duplicated logic, no drift between web and mobile.
+
+**Interactive API docs: [`/api/docs`](http://localhost:5000/api/docs)** (Swagger UI) ·
+spec at [`/api/openapi.json`](http://localhost:5000/api/openapi.json)
 
 ---
 
 ## Tech Stack
 
-| Layer       | Technology                                        |
-|-------------|---------------------------------------------------|
-| Backend     | Flask 3.0, Flask-Login, Flask-Migrate             |
-| ORM         | SQLAlchemy 2.0 + psycopg2-binary                  |
-| Templates   | Jinja2 + Bootstrap 5.3.3 + Bootstrap Icons 1.11.3 |
-| Styling     | Custom CSS design system (Nunito + DM Mono fonts) |
-| Database    | PostgreSQL 15+                                    |
-| Auth        | Flask-Login + Flask-Bcrypt (session-based)        |
-| Forms       | Flask-WTF + WTForms + email-validator             |
-| Payments    | Bakong KHQR (Cambodian QR payment)                |
-| Images      | Pillow (image processing)                         |
-
----
-
-## Project Structure
-
-```
-ecommerce/
-├── app/
-│   ├── __init__.py              # App factory, extensions, blueprints
-│   ├── models.py                # 17 SQLAlchemy ORM models
-│   ├── routes/
-│   │   ├── main.py              # Homepage (hero, categories, featured products)
-│   │   ├── auth.py              # Login / register / logout / profile
-│   │   ├── products.py          # Product listing, search, filter, detail
-│   │   ├── cart.py              # Cart add / update / remove / clear
-│   │   ├── orders.py            # Checkout, order history, KHQR payment
-│   │   ├── reviews.py           # Product review submission
-│   │   └── admin.py             # Full admin panel (all CRUD)
-│   ├── static/
-│   │   └── css/
-│   │       └── main.css         # Fresh fruit design system (CSS variables)
-│   └── templates/
-│       ├── base.html            # Base layout — navbar + dark-green footer
-│       ├── main/
-│       │   └── index.html       # Homepage — hero, features, categories, CTA
-│       ├── auth/
-│       │   ├── login.html       # Sign-in page
-│       │   ├── register.html    # Account creation
-│       │   └── profile.html     # Profile edit
-│       ├── products/
-│       │   ├── list.html        # Product listing with sidebar filters
-│       │   ├── detail.html      # Product page — gallery, variants, reviews
-│       │   └── _card.html       # Reusable product card component
-│       ├── cart/
-│       │   └── cart.html        # Cart with image rows + order summary
-│       ├── orders/
-│       │   ├── checkout.html    # Shipping + payment form
-│       │   ├── list.html        # Order history (desktop table + mobile cards)
-│       │   ├── detail.html      # Order detail — items, shipping, payment
-│       │   └── khqr_payment.html# KHQR QR-code payment page
-│       ├── admin/               # Full admin panel (18 templates)
-│       ├── 403.html
-│       └── 404.html
-├── config.py                    # Dev / prod configuration classes
-├── run.py                       # WSGI entry point
-├── manage.py                    # CLI commands
-├── seed.py                      # Database seeder (sample products & users)
-├── requirements.txt
-└── .env
-```
-
----
-
-## Database Schema (17 Tables)
-
-```
-Users ───< User_Roles >─── Roles
-Users ───< Orders ───< Order_Items >─── Product_Variants ─── Products ─── Categories
-           │                                    │
-           │                                    └── Inventory_Logs
-           ├── Payments  (method, status, KHQR md5_hash)
-           ├── Shipping  (address, city, phone, status)
-           └── Coupons   (percentage / fixed, expiry)
-Users ── Reviews ─── Products
-Users ── Cart ───< Cart_Items >─── Product_Variants
-Products ───< Product_Promotions >─── Promotions
-Bakong_Merchants (KHQR merchant config)
-Payment_Transactions (KHQR transaction log)
-```
+| Layer     | Technology                                          |
+|-----------|-----------------------------------------------------|
+| Backend   | Flask 3.0, Flask-Login, Flask-Migrate, Flask-CORS   |
+| ORM       | SQLAlchemy 2.0 + psycopg2 (PostgreSQL) / SQLite     |
+| API docs  | OpenAPI 3.0.3 + Swagger UI                          |
+| Templates | Jinja2 + Bootstrap 5 + Bootstrap Icons              |
+| Admin UI  | AdminLTE 4                                          |
+| Auth      | Flask-Bcrypt · session cookies (web) + signed bearer tokens (mobile) |
+| Payments  | Bakong KHQR (Cambodian QR payment)                  |
+| Images    | Pillow                                              |
 
 ---
 
 ## Quick Start
 
-### 1. Prerequisites
-
-- Python 3.11+
-- PostgreSQL 15+ running on port **5433**
-- Database: `py_ecommerce`, user: `myuser`, password: `MySecretPassword`
-
-### 2. Install dependencies
-
 ```bash
-cd ecommerce
 pip install -r requirements.txt
+
+# No DATABASE_URL? It falls back to SQLite at instance/ecommerce.db —
+# nothing to install, good enough to run and demo.
+python seed.py        # drops, recreates and fills the database
+python run.py         # http://localhost:5000
 ```
 
-### 3. Configure environment
-
-Create or verify `.env` in the project root:
+For PostgreSQL, put the URL in `.env`:
 
 ```env
-DATABASE_URL=postgresql+psycopg2://myuser:MySecretPassword@localhost:5433/py_ecommerce
+DATABASE_URL=postgresql://user:password@localhost:5432/py_ecommerce
 SECRET_KEY=change-me-to-a-long-random-string
 FLASK_ENV=development
 ```
 
-### 4. Set up the database
+The app creates the database and tables on first boot if they don't exist, and
+adds any column a newer release introduced.
 
-```bash
-# Option A — seed script (drops & recreates all tables + inserts sample data)
-python seed.py
+### Seeded accounts
 
-# Option B — Flask-Migrate (incremental, production-friendly)
-flask db init
-flask db migrate -m "initial schema"
-flask db upgrade
-flask create-admin
-```
+| Role     | Email             | Password   |
+|----------|-------------------|------------|
+| Admin    | admin@shop.com    | `admin123` |
+| Customer | alice@example.com | `password` |
+| Customer | bob@example.com   | `password` |
+| Customer | maya@example.com  | `password` |
 
-### 5. Run the app
+### Seeded coupons
 
-```bash
-python run.py
-# or
-flask run --port 5000
-```
-
-Open **http://localhost:5000**
+| Code      | Type       | Value | Minimum order |
+|-----------|------------|-------|---------------|
+| WELCOME10 | percentage | 10%   | $0            |
+| GLOW20    | percentage | 20%   | $80           |
+| FLAT15    | fixed      | $15   | $60           |
 
 ---
 
-## Sample Credentials (after seeding)
+## The API
 
-| Role     | Email               | Password   |
-|----------|---------------------|------------|
-| Admin    | admin@shop.com      | admin123   |
-| Customer | alice@example.com   | password   |
-| Customer | bob@example.com     | password   |
+### How dual-format routing works
+
+Every blueprint is registered twice — once bare, once under `/api`:
+
+```python
+app.register_blueprint(products_bp, url_prefix='/products')
+app.register_blueprint(products_bp, url_prefix='/api/products', name='api_products')
+```
+
+`wants_json()` in [`app/api.py`](app/api.py) decides the format. Anything under
+`/api/` is always JSON. Elsewhere it follows `?format=json`, a JSON request body,
+or the `Accept` header — with a deliberate exception: browsers send
+`Sec-Fetch-Mode: navigate` on real page loads, so a form submit never gets JSON
+back even when its `Accept` header is a bare `*/*`.
+
+### Response envelope
+
+```json
+{ "success": true,  "data": { ... } }
+{ "success": false, "error": "Not found" }
+```
+
+A `422` also carries `errors`, one message per failed field:
+
+```json
+{ "success": false, "error": "Validation failed",
+  "errors": ["Email is required.", "Password must be at least 6 characters."] }
+```
+
+### Authentication
+
+`POST /api/auth/login` returns a signed, stateless token. Send it on every later
+request:
+
+```
+Authorization: Bearer <token>
+```
+
+Valid for 30 days. It stops working the moment an admin deactivates the account —
+the flag is re-checked on each request, not just at login. Browsers may use the
+session cookie instead; both are accepted.
+
+```bash
+TOKEN=$(curl -s -X POST localhost:5000/api/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"alice@example.com","password":"password"}' | jq -r .token)
+
+curl -s localhost:5000/api/cart/ -H "Authorization: Bearer $TOKEN"
+```
+
+### Status codes
+
+| Code | Meaning                                              |
+|------|------------------------------------------------------|
+| 200  | OK                                                   |
+| 201  | Created                                              |
+| 400  | Malformed request                                    |
+| 401  | No or invalid token                                  |
+| 403  | Signed in but not allowed (admin-only, or suspended) |
+| 404  | No such resource                                     |
+| 405  | Wrong method for that path                           |
+| 409  | Conflict — stock ran out mid-checkout                |
+| 413  | Upload over the 5 MB limit                           |
+| 422  | Validation failed — see `errors`                     |
+| 500  | Unexpected server error                              |
+
+**Errors are always JSON for API clients — never an HTML page.** Every handler
+lives in [`app/__init__.py`](app/__init__.py) and branches on `wants_json()`.
+
+### Endpoint map
+
+Full reference with request/response schemas at **`/api/docs`**. In brief:
+
+| Group      | Endpoints |
+|------------|-----------|
+| Auth       | `POST /api/auth/register` · `POST /api/auth/login` · `GET /api/auth/logout` · `GET\|POST /api/auth/profile` |
+| Catalog    | `GET /api/` (home feed) · `GET /api/products/` (search + 14 filters) · `GET /api/products/{id}` · `/api/products/for-you` · `/brand/{slug}` · `/concern/{slug}` · `/ingredient/{slug}` · `/bundles` · `GET /api/ingredients` |
+| Categories | `GET /api/categories/` (tree, `?flat=1`) · `GET /api/categories/{id\|slug}` · `GET /api/categories/{id\|slug}/products` |
+| Cart       | `GET /api/cart/` · `POST /api/cart/add` · `/add-bundle` · `/update/{id}` · `/remove/{id}` · `/clear` |
+| Orders     | `GET /api/orders/` · `GET /api/orders/{id}` · `GET\|POST /api/orders/checkout` · `/khqr-payment/{tx}` · `POST /api/orders/api/check-payment` |
+| Account    | `/api/account/` · `/skin-profile` · `/addresses` (CRUD) · `/wishlist` + `/wishlist/toggle` · `/alerts` · `/subscriptions` · `/returns` |
+| Reviews    | `POST /api/reviews/submit` · `POST /api/reviews/{id}/delete` |
+| Admin      | `/api/admin/users` · `/api/admin/categories` · `/api/admin/products` · `/api/admin/orders` · `/api/admin/inventory` · `/api/admin/coupons` · … |
+
+Categories accept **either an id or a slug** — `/api/categories/3` and
+`/api/categories/cleansers` return the same thing. A parent category rolls up
+everything filed under its children.
 
 ---
 
-## Sample Coupon Codes
+## Database
 
-| Code       | Type       | Value | Min Order |
-|------------|------------|-------|-----------|
-| WELCOME10  | percentage | 10%   | $0        |
-| SAVE20     | percentage | 20%   | $100      |
-| FLAT15     | fixed      | $15   | $50       |
+40 tables. The nine entities the brief asks for, plus what a real skincare
+catalogue needs (variants, ingredients, skin types, concerns, subscriptions,
+returns).
+
+```
+Users ──< User_Roles >── Roles
+  │
+  ├──< Addresses
+  ├──< Orders ──< Order_Items >── Product_Variants ──< Products
+  │      ├── Payments · Shipping · Order_Status_History
+  │      └── Coupons · Shipping_Methods
+  ├──  Cart ──< Cart_Items >── Product_Variants
+  ├──  Wishlist ──< Wishlist_Items >── Products
+  ├──  User_Skin_Profile ──< Skin_Profile_Concerns >── Skin_Concerns
+  ├──< Reviews ── Products
+  ├──< Subscriptions · Return_Requests ──< Return_Items
+  └──< Back_In_Stock_Alerts
+
+Products ──< Product_Images
+         ──< Product_Variants ──< Inventory_Logs
+         ──< Product_Ingredients >── Ingredients
+         ──< Product_Skin_Types >── Skin_Types
+         ──< Product_Concerns   >── Skin_Concerns
+         ──< Product_Promotions >── Promotions
+         ──  Categories (self-referencing parent/child)
+         ──  Brands
+
+Bundles ──< Bundle_Items >── Product_Variants
+Bakong_Merchants · Payment_Transactions
+```
+
+Every model has a `to_dict()` — that's the single source of truth for the JSON
+shape, so the API and the templates can never disagree about a field.
+
+Key design choices:
+
+- **Categories self-reference** (`parent_id`) for a real hierarchy. `descendant_ids()`
+  makes a parent category list everything beneath it.
+- **Variants hold price and stock**, not products. A 30 ml and a 50 ml bottle are
+  different SKUs at different prices.
+- **Order items snapshot** `product_name`, `variant_label` and `price` at purchase
+  time, so renaming or deleting a product never rewrites order history.
+- **Users are deactivated, not deleted**, once they have orders — order history is
+  a financial record.
 
 ---
 
 ## Features
 
 ### Storefront
-- Homepage with animated hero, features strip ("Organic / Fast Delivery / Quality Checked"), category pills, featured product grid, and a CTA section
-- Product listing with sidebar filters — search, category, sort (newest / price ↑↓), pagination
-- Product detail with image gallery, variant selector (size/color), live price update, quantity stepper, and promotion badges
-- Star ratings + verified review submission
-- Related products section
+- Home feed: new arrivals, bestsellers, on-sale, categories, concerns, bundles
+- Catalogue with 14 filters — search, category, brand, skin type, concern,
+  ingredient, product type, routine step, price range, SPF, in-stock, on-sale,
+  and five ethical claims — plus five sort orders and pagination
+- Category browser with hierarchy and live product counts
+- Product detail: gallery, variant picker, INCI list, ingredient explainers,
+  reviews filterable by the reviewer's skin type
+- Ingredient glossary
+- "For you" recommendations matched to the saved skin profile
 
-### Cart & Checkout
-- Image-first cart rows with inline quantity stepper and per-item remove
-- Checkout with shipping form + five payment methods (Cash on Delivery, Credit Card, PayPal, Bank Transfer, KHQR)
-- Coupon code application (percentage and fixed discounts)
-- KHQR / Bakong QR payment with 60-second auto-polling and deep-link to Bakong app
+### Cart & checkout
+- Per-variant cart with stock clamping and out-of-stock warnings
+- Routine kits explode into individual lines so one item can still be dropped
+- Coupons (percentage and fixed) with minimum-order rules
+- Selectable delivery methods with live re-quoting
+- Saved addresses or a one-off address at checkout
+- Five payment methods, including **Bakong KHQR** with auto-polling
+- Stock is re-checked at the last moment before the order is written
 
 ### Account
-- Register / Login / Logout with remember-me option
-- Profile editing — name, phone, password
-- Order history (responsive desktop table + mobile card layout)
-- Order detail — line items, shipping address, payment status
+- Register / login / logout, profile editing
+- Skin profile (type, age range, concerns) driving recommendations
+- Address book with a default address
+- Wishlist / favourites
+- Back-in-stock alerts, refill subscriptions, return requests
 
-### Admin Panel (`/admin`)
-- Dashboard — total users, products, orders, revenue; order status breakdown; quick-action links
-- Full CRUD for Categories, Products, and Product Variants (with image URLs)
-- Order management with status pipeline: Pending → Processing → Shipped → Delivered → Cancelled
-- Coupon management — percentage and fixed types, expiry dates, minimum order amounts
-- Promotion campaigns — date-bounded, applied per product
-- Inventory log — all IN / OUT / ADJUSTMENT entries with timestamps
-- User list with Admin role toggle
-- Bakong merchant configuration (KHQR API key, merchant ID)
-- Payment transaction history
+### Admin panel (`/admin`)
+- Dashboard: revenue, orders, low stock, expiring stock, monthly series
+- **Customer management** — search and filter by role or status, customer
+  detail with lifetime spend, order history, reviews, addresses and wishlist;
+  create, edit, reset password, promote/demote, suspend/restore, delete
+- Full CRUD: categories (hierarchical), brands, products, variants, images,
+  ingredients, bundles, coupons, promotions, shipping methods
+- Order pipeline: Pending → Processing → Shipped → Delivered / Cancelled, with
+  tracking numbers and status history
+- Inventory with low-stock and expiry warnings; returns; stock-alert mailbox
+- Bakong merchant config and payment transaction log
+
+**Guardrails.** You can't demote, suspend or delete your own account, can't
+remove the last active admin, and can't delete a customer who has placed an
+order — the API returns `422` with the reason, and the buttons are disabled in
+the UI.
+
+---
+
+## Project Structure
+
+```
+backend/
+├── app/
+│   ├── __init__.py           # App factory, blueprints, error handlers
+│   ├── api.py                # wants_json() + the JSON envelope helpers
+│   ├── docs.py               # OpenAPI 3.0 spec + Swagger UI
+│   ├── models.py             # 40 tables, each with to_dict()
+│   ├── utils.py              # slugify / unique_slug
+│   ├── routes/
+│   │   ├── main.py           # Home feed, ingredient glossary
+│   │   ├── auth.py           # Register / login / logout / profile
+│   │   ├── products.py       # Catalogue, filters, detail, bundles
+│   │   ├── categories.py     # Category tree and category browsing
+│   │   ├── cart.py           # Cart operations
+│   │   ├── orders.py         # Checkout, history, KHQR payment
+│   │   ├── account.py        # Addresses, wishlist, skin profile, returns
+│   │   ├── reviews.py        # Review submission
+│   │   └── admin.py          # Admin panel — all CRUD
+│   ├── static/css/main.css   # Design system (CSS custom properties)
+│   └── templates/
+│       ├── base.html, error.html, 403.html, 404.html
+│       ├── main/ auth/ products/ cart/ orders/ account/
+│       └── admin/            # 37 AdminLTE templates
+├── migrations/versions/      # Alembic
+├── config.py                 # Dev / prod config
+├── run.py                    # WSGI entry point
+├── manage.py                 # Flask CLI commands
+├── seed.py                   # Sample catalogue, users, orders
+├── Dockerfile
+└── requirements.txt
+```
 
 ---
 
 ## Design System
 
-The entire UI is driven by CSS variables defined in `app/static/css/main.css`:
+Driven by CSS custom properties in [`app/static/css/main.css`](app/static/css/main.css):
 
-| Token              | Value       | Use                         |
-|--------------------|-------------|-----------------------------|
-| `--c-primary`      | `#2a7d4f`   | Leaf green — buttons, links |
-| `--c-orange`       | `#e0611a`   | Citrus — Add to Cart CTA    |
-| `--c-yellow`       | `--f0b429`  | Star ratings, promo badges  |
-| `--c-bg`           | `#fdfbf5`   | Warm cream body background  |
-| `--c-text`         | `#1a2412`   | Dark forest text            |
-| `--radius-xl`      | `22px`      | Cards, auth boxes           |
-| Font (heading/body)| Nunito      | Round, friendly weight 700–800 |
-| Font (prices/codes)| DM Mono     | Monospace numerics          |
+| Token             | Value      | Use                        |
+|-------------------|------------|----------------------------|
+| `--c-primary`     | `#3c4c33`  | Deep olive — buttons, links |
+| `--c-primary-lt`  | `#e8eeda`  | Soft sage — surfaces        |
+| `--c-bg`          | `#f4e8d6`  | Warm sand background        |
+| `--c-text`        | `#25301f`  | Near-black green            |
+| `--font-display`  | Figtree    | Headings and UI             |
+| `--font-serif`    | Instrument Serif | Editorial accents     |
+| `--font-mono`     | DM Mono    | Prices, SKUs, numerics      |
 
 ---
 
 ## CLI Commands
 
 ```bash
-flask create-admin          # Interactive admin account creation
-flask seed-db               # Re-seed sample categories, products, users
-flask db migrate -m "msg"   # Generate a new Alembic migration
+python seed.py              # Rebuild and seed the whole database
+flask create-admin          # Create an admin account interactively
+flask seed-db               # Same as seed.py, via the CLI
+flask db migrate -m "msg"   # Generate an Alembic migration
 flask db upgrade            # Apply pending migrations
 ```
-# flask-pro-ecom
+
+---
+
+## Deployment
+
+`Dockerfile` and `gunicorn` are included:
+
+```bash
+docker build -t aurea-skin .
+docker run -p 5000:5000 --env-file .env aurea-skin
+```
+
+Behind a proxy, `ProxyFix` reads `X-Forwarded-*` so redirects and URLs use the
+external scheme and host. CORS is open (`*`) because the mobile app authenticates
+with a bearer token rather than cookies — no credentials cross origins.

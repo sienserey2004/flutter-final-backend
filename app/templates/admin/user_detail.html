@@ -72,9 +72,9 @@
               {% for o in orders %}
               <tr>
                 <td class="font-monospace">#{{ o.order_id }}</td>
-                <td class="small text-secondary">{{ o.order_date.strftime('%b %d, %Y') if o.order_date else '—' }}</td>
+                <td class="small text-secondary">{{ o.created_at.strftime('%b %d, %Y') if o.created_at else '—' }}</td>
                 <td>{{ m.status_badge(o.status) }}</td>
-                <td class="font-monospace">{{ o.items|length }}</td>
+                <td class="font-monospace">{{ o.item_count() }}</td>
                 <td class="text-end font-monospace">${{ '%.2f'|format(o.total_amount or 0) }}</td>
                 <td class="text-end">
                   <a href="{{ url_for('admin.order_detail', order_id=o.order_id) }}"
@@ -177,11 +177,11 @@
     <div class="card">
       <div class="card-header">
         <h3 class="card-title">Wishlist
-          <span class="text-secondary fs-6">({{ user.wishlist.items|length if user.wishlist else 0 }})</span>
+          <span class="text-secondary fs-6">({{ user.wishlist.items.count() if user.wishlist else 0 }})</span>
         </h3>
       </div>
       <div class="card-body">
-        {% if user.wishlist and user.wishlist.items %}
+        {% if user.wishlist and user.wishlist.items.count() %}
           <ul class="list-unstyled mb-0 small">
             {% for item in user.wishlist.items %}
               <li class="mb-1">

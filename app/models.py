@@ -117,12 +117,12 @@ class User(UserMixin, db.Model):
         total = db.session.query(_func.coalesce(_func.sum(Order.total_amount), 0))                           .filter(Order.user_id == self.user_id,
                                   Order.status != 'Cancelled').scalar() or 0
         count = billable.count()
-        last = self.orders.order_by(Order.order_date.desc()).first()
+        last = self.orders.order_by(Order.created_at.desc()).first()
         return {
             'order_count': count,
             'total_spent': round(float(total), 2),
             'average_order': round(float(total) / count, 2) if count else 0.0,
-            'last_order_date': last.order_date.isoformat() if last and last.order_date else None,
+            'last_order_date': last.created_at.isoformat() if last and last.created_at else None,
         }
 
     def to_dict(self, include_stats=False):

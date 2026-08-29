@@ -51,8 +51,8 @@ class Config:
     BAKONG_TOKEN = os.environ.get('bakong_token')
 
     # Storefront
-    STORE_NAME    = os.environ.get('STORE_NAME', 'Aurea Skin')
-    STORE_TAGLINE = os.environ.get('STORE_TAGLINE', 'Honest skincare, matched to your skin.')
+    STORE_NAME    = os.environ.get('STORE_NAME', 'NovaMart')
+    STORE_TAGLINE = os.environ.get('STORE_TAGLINE', 'Everyday products, thoughtfully selected.')
     # Applied to (subtotal − discount) at checkout. 0 = tax-inclusive pricing.
     TAX_RATE      = float(os.environ.get('TAX_RATE', '0') or 0)
 

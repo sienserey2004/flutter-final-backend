@@ -184,10 +184,15 @@ def dashboard():
 
 
 # ── Customers / Users ──────────────────────────────────────────────────────────
-def _admin_count():
-    """How many active admins are left — used to refuse the change that would
-    lock everyone out of the admin panel."""
-    return (User.query.filter(User.is_active.is_(True))
+def _other_active_admins(user_id):
+    """Active admins apart from this one. Zero means the change under
+    consideration would lock everybody out of the admin panel.
+
+    Counting *excluding* the target matters: a suspended admin contributes
+    nothing, so deleting one must not be refused just because the acting admin
+    is the only active account left."""
+    return (User.query.filter(User.is_active.is_(True),
+                              User.user_id != user_id)
             .filter(User.roles.any(Role.role_name == 'Admin')).count())
 
 
@@ -235,7 +240,7 @@ def user_detail(user_id):
     """One customer: profile, lifetime value, orders, reviews, addresses."""
     user = User.query.get_or_404(user_id)
 
-    orders    = user.orders.order_by(Order.order_date.desc()).all()
+    orders    = user.orders.order_by(Order.created_at.desc()).all()
     reviews   = user.reviews.order_by(Review.created_at.desc()).all()
     addresses = user.addresses.order_by(Address.is_default.desc()).all()
     stats     = user.order_stats()
@@ -287,12 +292,16 @@ def new_user():
             return render_template('admin/user_form.html', user=None, name=name,
                                    email=email, phone=phone, is_admin=is_admin)
 
+        # Resolve the roles up front: _role() runs a query, and a query fired
+        # between two appends autoflushes a half-built association off a
+        # pending User — SQLAlchemy warns and drops it.
+        roles = [_role('Customer')] + ([_role('Admin')] if is_admin else [])
+
         user = User(name=name, email=email, phone=phone, is_active=True)
         user.set_password(password)
-        user.roles.append(_role('Customer'))
-        if is_admin:
-            user.roles.append(_role('Admin'))
         db.session.add(user)
+        for r in roles:
+            user.roles.append(r)
         db.session.flush()
         db.session.add(Cart(user_id=user.user_id))
         db.session.commit()
@@ -364,7 +373,7 @@ def toggle_admin(user_id):
 
     admin_role = _role('Admin')
     if user.has_role('Admin'):
-        if _admin_count() <= 1:
+        if not _other_active_admins(user.user_id):
             message = 'This is the last active admin — promote someone else first.'
             if wants_json():
                 return api_error(message, 422)
@@ -392,7 +401,8 @@ def toggle_user_active(user_id):
 
     if user.user_id == current_user.user_id:
         reason = 'Cannot deactivate your own account.'
-    elif user.is_active and user.has_role('Admin') and _admin_count() <= 1:
+    elif (user.is_active and user.has_role('Admin')
+          and not _other_active_admins(user.user_id)):
         reason = 'This is the last active admin — promote someone else first.'
     else:
         reason = None
@@ -427,7 +437,7 @@ def delete_user(user_id):
     elif order_count:
         reason = (f'{user.name} has {order_count} order(s). '
                   'Deactivate the account instead so order history is kept.')
-    elif user.has_role('Admin') and _admin_count() <= 1:
+    elif user.has_role('Admin') and not _other_active_admins(user.user_id):
         reason = 'This is the last active admin — promote someone else first.'
     else:
         reason = None
