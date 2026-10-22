@@ -5,13 +5,14 @@ All fields below work as a standard form post OR as a JSON request body (see
 mirror (e.g. `/api/auth/login`) accepts identical payloads and always
 responds with JSON.
 
-**Token auth (for API/mobile clients):** `POST /auth/login` returns a signed
+**Token auth (for API/mobile clients):** `POST /auth/login` returns a JWT
 `token` alongside the user when the response is JSON. Store it client-side
 and send it back as `Authorization: Bearer <token>` on later requests — this
 works without cookies, so it's how you authenticate across origins (mobile
 apps, cross-site frontends) where the session cookie set by login won't be
-sent back. The token is stateless (`itsdangerous`, signed with `SECRET_KEY`)
-and expires after 30 days (`User.TOKEN_MAX_AGE`); there's no server-side
+sent back. The token is a stateless **JWT** (HS256, signed with a key derived
+from `SECRET_KEY`, carrying `sub`/`iat`/`exp` claims) that expires after
+30 days (`User.TOKEN_MAX_AGE`); there's no server-side
 revocation, so logout only clears the cookie session — an API client should
 just discard its stored token.
 
@@ -87,6 +88,18 @@ Failure `401`:
 Use the token on subsequent requests to any auth-protected endpoint:
 ```
 Authorization: Bearer eyJ1c2VyX2lkIjoxfQ.aBcDeF.signature
+```
+
+For an `Admin` or `SuperAdmin`, `data` also carries `enabled_modules` — the
+admin modules this user may open, in menu order. Build the admin menu from it:
+```json
+"roles": ["Admin", "Customer"],
+"enabled_modules": ["dashboard", "products", "orders", "users"]
+```
+A Super Admin always gets every module. When a Super Admin switches a module
+off, Admins get `403` on its `/api/admin/...` routes:
+```json
+{ "success": false, "error": "The Coupons module is disabled.", "module": "coupons" }
 ```
 
 ---

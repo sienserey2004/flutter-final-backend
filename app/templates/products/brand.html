@@ -15,7 +15,7 @@
   <div class="card mb-4" style="border-radius:var(--radius-xl);">
     <div class="card-body p-4 d-flex align-items-center gap-4 flex-wrap">
       {% if brand.logo %}
-        <img src="{{ brand.logo }}" alt="{{ brand.name }}"
+        <img src="{{ brand.logo_url() }}" alt="{{ brand.name }}"
              style="height:64px;object-fit:contain;">
       {% endif %}
       <div>

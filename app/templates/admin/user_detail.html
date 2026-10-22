@@ -11,13 +11,21 @@
   <h3 class="mb-0">{{ user.name }}</h3>
   {{ m.bool_badge(user.is_active, 'Active', 'Deactivated') }}
   {% for r in user.roles %}
-    <span class="badge text-bg-{{ 'primary' if r.role_name == 'Admin' else 'secondary' }}">{{ r.role_name }}</span>
+    <span class="badge text-bg-{{ {'SuperAdmin': 'danger', 'Admin': 'primary'}.get(r.role_name, 'secondary') }}">{{ r.role_name }}</span>
   {% endfor %}
 
   <div class="ms-auto d-flex gap-2">
     <a href="{{ url_for('admin.edit_user', user_id=user.user_id) }}" class="btn btn-primary btn-sm">
       <i class="bi bi-pencil me-1" aria-hidden="true"></i>Edit
     </a>
+    {% if is_super_admin %}
+    <form action="{{ url_for('admin.toggle_superadmin', user_id=user.user_id) }}" method="post">
+      <button type="submit" {{ 'disabled' if is_self }}
+              class="btn btn-outline-{{ 'danger' if user.is_super_admin() else 'secondary' }} btn-sm">
+        <i class="bi bi-{{ 'star-fill' if user.is_super_admin() else 'star' }} me-1" aria-hidden="true"></i>
+        {{ 'Remove Super Admin' if user.is_super_admin() else 'Make Super Admin' }}
+      </button>
+    </form>
     <form action="{{ url_for('admin.toggle_admin', user_id=user.user_id) }}" method="post">
       <button type="submit" {{ 'disabled' if is_self }}
               class="btn btn-outline-{{ 'danger' if user.has_role('Admin') else 'secondary' }} btn-sm">
@@ -25,6 +33,7 @@
         {{ 'Remove admin' if user.has_role('Admin') else 'Make admin' }}
       </button>
     </form>
+    {% endif %}
     <form action="{{ url_for('admin.toggle_user_active', user_id=user.user_id) }}" method="post">
       <button type="submit" {{ 'disabled' if is_self }}
               class="btn btn-outline-{{ 'warning' if user.is_active else 'success' }} btn-sm">

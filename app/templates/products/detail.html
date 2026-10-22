@@ -364,8 +364,8 @@
     {% for p in routine %}
       <div class="col">
         <a href="{{ url_for('products.detail', product_id=p.product_id) }}"
-           class="card h-100 text-decoration-none" style="border-radius:var(--radius-xl);">
-          <div class="product-img" style="aspect-ratio:1;">
+           class="card h-100 text-decoration-none routine-card" style="border-radius:var(--radius-xl);">
+          <div class="routine-card-img">
             {% if p.primary_image_url() %}
               <img src="{{ p.primary_image_url() }}" alt="{{ p.name }}" loading="lazy"/>
             {% endif %}

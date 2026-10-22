@@ -1367,3 +1367,17 @@ body { background: var(--c-bg); color: var(--c-text); }
   .commerce-hero h1 { font-size: 2.7rem; }.commerce-hero .btn-lg { width: 100%; }.hero-proof span { font-size: .64rem; }.hero-product-stage { min-height: 370px; }.hero-product-image { height: 250px; }
   .benefits-grid { gap: .7rem; }.benefit-item { gap: .5rem; }.benefit-item strong { font-size: .72rem; }.product-badge { top: .5rem; left: .5rem; }.product-wishlist { top: .4rem; right: .4rem; }.commerce-product-body h3 { font-size: .84rem; }.product-meta-row { font-size: .58rem; }.product-card-price { flex-direction: column; gap: 0; }.card-cart-button { width: 34px; height: 34px; }.marketplace-footer .footer-main { grid-template-columns: 1fr; }.footer-intro,.footer-newsletter { grid-column: auto; }
 }
+
+/* "Complete the routine" cards on the product page */
+.routine-card { overflow: hidden; }
+.routine-card-img {
+  aspect-ratio: 1;
+  overflow: hidden;
+  background: var(--c-bg-soft);
+  border-bottom: 1px solid var(--c-border-lt);
+}
+.routine-card-img img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+  transition: transform .45s cubic-bezier(.2,.7,.3,1);
+}
+.routine-card:hover .routine-card-img img { transform: scale(1.05); }

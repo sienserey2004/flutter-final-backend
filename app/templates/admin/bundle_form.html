@@ -13,7 +13,7 @@
     <div class="card">
       <div class="card-header"><h3 class="card-title">Kit details</h3></div>
       <div class="card-body">
-        <form method="post">
+        <form method="post" enctype="multipart/form-data">
           <div class="row g-3">
             <div class="col-12">
               <label class="form-label" for="name">Kit name</label>
@@ -42,9 +42,7 @@
               </div>
             {% endif %}
             <div class="col-12">
-              <label class="form-label" for="image">Image URL</label>
-              <input type="text" class="form-control" id="image" name="image"
-                     value="{{ bundle.image or '' if bundle else '' }}">
+              {{ m.image_upload('image', bundle.image if bundle else none, 'Bundle image') }}
             </div>
             <div class="col-12">
               <label class="form-label" for="description">Description</label>

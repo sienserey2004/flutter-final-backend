@@ -3,7 +3,7 @@ from flask_login import login_required, current_user
 from datetime import datetime
 from app.models import (db, Cart, CartItem, Order, OrderItem, OrderStatusHistory,
                         Payment, Shipping, Coupon, InventoryLog, ShippingMethod,
-                        Address, PaymentTransaction, BakongMerchant)
+                        Address, PaymentTransaction, BakongMerchant, Notification)
 from app.api import wants_json, api_ok, api_error, form_value
 import hashlib
 from bakong_khqr import KHQR
@@ -229,6 +229,13 @@ def checkout():
             for item in cart.items.all():
                 db.session.delete(item)
 
+            db.session.commit()
+            db.session.add(Notification(
+                user_id=current_user.user_id,
+                title='Order placed',
+                message=f'Your order #{order.order_id} has been placed successfully.',
+                kind='order',
+            ))
             db.session.commit()
             flash(f'Order #{order.order_id} placed successfully!', 'success')
 

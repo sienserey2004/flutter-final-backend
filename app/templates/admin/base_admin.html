@@ -43,6 +43,7 @@
 
       <ul class="navbar-nav ms-auto">
         <!-- Messages (Mailbox: customers waiting on a sold-out product) -->
+        {% if module_on('stock_alerts') %}
         <li class="nav-item dropdown">
           <a class="nav-link" data-bs-toggle="dropdown" href="#"
              aria-label="Stock-alert messages: {{ admin_pending_alerts_count }} waiting">
@@ -83,6 +84,7 @@
             </a>
           </div>
         </li>
+        {% endif %}
 
         <!-- Notifications: things needing attention -->
         <li class="nav-item dropdown">
@@ -197,35 +199,52 @@
           <li class="nav-header">OVERVIEW</li>
           {{ nav_item(request.endpoint=='admin.dashboard', url_for('admin.dashboard'), 'grid-1x2', 'Dashboard') }}
 
+          {% if module_on('brands') or module_on('categories') or module_on('products') or module_on('bundles') %}
           <li class="nav-header">CATALOG</li>
-          {{ nav_item('brand' in request.endpoint, url_for('admin.brands'), 'award', 'Brands') }}
-          {{ nav_item('categor' in request.endpoint, url_for('admin.categories'), 'folder', 'Categories') }}
-          {{ nav_item('product' in request.endpoint or 'variant' in request.endpoint, url_for('admin.products'), 'box-seam', 'Products') }}
-          {{ nav_item('bundle' in request.endpoint, url_for('admin.bundles'), 'gift', 'Routine Kits') }}
+          {% if module_on('brands') %}{{ nav_item('brand' in request.endpoint, url_for('admin.brands'), 'award', 'Brands') }}{% endif %}
+          {% if module_on('categories') %}{{ nav_item('categor' in request.endpoint, url_for('admin.categories'), 'folder', 'Categories') }}{% endif %}
+          {% if module_on('products') %}{{ nav_item('product' in request.endpoint or 'variant' in request.endpoint, url_for('admin.products'), 'box-seam', 'Products') }}{% endif %}
+          {% if module_on('bundles') %}{{ nav_item('bundle' in request.endpoint, url_for('admin.bundles'), 'gift', 'Routine Kits') }}{% endif %}
+          {% endif %}
 
+          {% if module_on('ingredients') or module_on('skin_types') or module_on('concerns') %}
           <li class="nav-header">SKINCARE DATA</li>
-          {{ nav_item('ingredient' in request.endpoint, url_for('admin.ingredients'), 'droplet', 'Ingredients') }}
-          {{ nav_item(kind=='skin-types', url_for('admin.taxonomy', kind='skin-types'), 'person-bounding-box', 'Skin Types') }}
-          {{ nav_item(kind=='concerns', url_for('admin.taxonomy', kind='concerns'), 'bullseye', 'Skin Concerns') }}
+          {% if module_on('ingredients') %}{{ nav_item('ingredient' in request.endpoint, url_for('admin.ingredients'), 'droplet', 'Ingredients') }}{% endif %}
+          {% if module_on('skin_types') %}{{ nav_item(kind=='skin-types', url_for('admin.taxonomy', kind='skin-types'), 'person-bounding-box', 'Skin Types') }}{% endif %}
+          {% if module_on('concerns') %}{{ nav_item(kind=='concerns', url_for('admin.taxonomy', kind='concerns'), 'bullseye', 'Skin Concerns') }}{% endif %}
+          {% endif %}
 
+          {% if module_on('inventory') or module_on('stock_alerts') %}
           <li class="nav-header">INVENTORY</li>
-          {{ nav_item(request.endpoint=='admin.inventory', url_for('admin.inventory'), 'list-check', 'Stock & Expiry') }}
-          {{ nav_item('stock_alert' in request.endpoint or 'notify' in request.endpoint, url_for('admin.stock_alerts'), 'bell', 'Stock Alerts (Mailbox)', badge=admin_pending_alerts_count) }}
+          {% if module_on('inventory') %}{{ nav_item(request.endpoint=='admin.inventory', url_for('admin.inventory'), 'list-check', 'Stock & Expiry') }}{% endif %}
+          {% if module_on('stock_alerts') %}{{ nav_item('stock_alert' in request.endpoint or 'notify' in request.endpoint, url_for('admin.stock_alerts'), 'bell', 'Stock Alerts (Mailbox)', badge=admin_pending_alerts_count) }}{% endif %}
+          {% endif %}
 
+          {% if module_on('orders') or module_on('returns') or module_on('subscriptions') or module_on('shipping_methods') or module_on('coupons') or module_on('promotions') %}
           <li class="nav-header">SALES</li>
-          {{ nav_item('order' in request.endpoint or 'tracking' in request.endpoint, url_for('admin.orders'), 'receipt', 'Orders') }}
-          {{ nav_item('return' in request.endpoint, url_for('admin.returns'), 'arrow-return-left', 'Returns', badge=admin_open_returns_count) }}
-          {{ nav_item(request.endpoint=='admin.subscriptions', url_for('admin.subscriptions'), 'arrow-repeat', 'Subscriptions') }}
-          {{ nav_item('shipping_method' in request.endpoint, url_for('admin.shipping_methods'), 'truck', 'Shipping Methods') }}
-          {{ nav_item('coupon' in request.endpoint, url_for('admin.coupons'), 'ticket-perforated', 'Coupons') }}
-          {{ nav_item('promotion' in request.endpoint, url_for('admin.promotions'), 'megaphone', 'Promotions') }}
+          {% if module_on('orders') %}{{ nav_item('order' in request.endpoint or 'tracking' in request.endpoint, url_for('admin.orders'), 'receipt', 'Orders') }}{% endif %}
+          {% if module_on('returns') %}{{ nav_item('return' in request.endpoint, url_for('admin.returns'), 'arrow-return-left', 'Returns', badge=admin_open_returns_count) }}{% endif %}
+          {% if module_on('subscriptions') %}{{ nav_item(request.endpoint=='admin.subscriptions', url_for('admin.subscriptions'), 'arrow-repeat', 'Subscriptions') }}{% endif %}
+          {% if module_on('shipping_methods') %}{{ nav_item('shipping_method' in request.endpoint, url_for('admin.shipping_methods'), 'truck', 'Shipping Methods') }}{% endif %}
+          {% if module_on('coupons') %}{{ nav_item('coupon' in request.endpoint, url_for('admin.coupons'), 'ticket-perforated', 'Coupons') }}{% endif %}
+          {% if module_on('promotions') %}{{ nav_item('promotion' in request.endpoint, url_for('admin.promotions'), 'megaphone', 'Promotions') }}{% endif %}
+          {% endif %}
 
+          {% if module_on('bakong_merchants') or module_on('payment_transactions') %}
           <li class="nav-header">PAYMENTS</li>
-          {{ nav_item('bakong_merchant' in request.endpoint, url_for('admin.bakong_merchants'), 'shop', 'Bakong Merchants') }}
-          {{ nav_item('payment_transaction' in request.endpoint or 'qr' in request.endpoint, url_for('admin.payment_transactions'), 'credit-card', 'Transactions') }}
+          {% if module_on('bakong_merchants') %}{{ nav_item('bakong_merchant' in request.endpoint, url_for('admin.bakong_merchants'), 'shop', 'Bakong Merchants') }}{% endif %}
+          {% if module_on('payment_transactions') %}{{ nav_item('payment_transaction' in request.endpoint or 'qr' in request.endpoint, url_for('admin.payment_transactions'), 'credit-card', 'Transactions') }}{% endif %}
+          {% endif %}
 
+          {% if module_on('users') %}
           <li class="nav-header">USERS</li>
           {{ nav_item('user' in request.endpoint, url_for('admin.users'), 'people', 'Customers') }}
+          {% endif %}
+
+          {% if is_super_admin %}
+          <li class="nav-header">SYSTEM</li>
+          {{ nav_item('module' in request.endpoint, url_for('admin.modules'), 'toggles', 'Modules') }}
+          {% endif %}
         </ul>
       </nav>
     </div>

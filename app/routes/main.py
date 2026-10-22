@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template
+from flask import Blueprint, render_template, current_app
 from flask_login import current_user
 from sqlalchemy import func
 from app.models import (db, Product, ProductVariant, Category, Brand, Promotion,
@@ -7,6 +7,35 @@ from app.api import wants_json, api_ok
 from datetime import datetime
 
 main_bp = Blueprint('main', __name__)
+
+
+@main_bp.route('/about')
+def about():
+    return api_ok({
+        'name': current_app.config.get('STORE_NAME', 'Aurea Skin'),
+        'tagline': current_app.config.get('STORE_TAGLINE', ''),
+        'version': '1.0.0',
+        'description': 'A skincare e-commerce application for discovering and ordering trusted products.',
+    })
+
+
+@main_bp.route('/contact')
+def contact():
+    return api_ok({
+        'email': current_app.config.get('CONTACT_EMAIL', 'support@example.com'),
+        'phone': current_app.config.get('CONTACT_PHONE', '+855 12 000 000'),
+        'address': current_app.config.get('CONTACT_ADDRESS', 'Phnom Penh, Cambodia'),
+        'hours': 'Monday-Friday, 9:00-17:00',
+    })
+
+
+@main_bp.route('/settings')
+def settings():
+    return api_ok({
+        'currency': 'USD', 'country': 'Cambodia', 'tax_included': True,
+        'supported_languages': ['en'],
+        'supported_payment_methods': ['Cash', 'Card', 'PayPal', 'Bank Transfer', 'KHQR'],
+    })
 
 
 @main_bp.route('/')

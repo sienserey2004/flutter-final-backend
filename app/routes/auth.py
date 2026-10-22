@@ -1,9 +1,14 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request
+from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app
 from flask_login import login_user, logout_user, login_required, current_user
 from app.models import db, User, Role, Cart
 from app.api import wants_json, api_ok, api_error, form_value
+from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 
 auth_bp = Blueprint('auth', __name__)
+
+
+def _password_reset_serializer():
+    return URLSafeTimedSerializer(current_app.config['SECRET_KEY'], salt='password-reset')
 
 
 @auth_bp.route('/register', methods=['GET', 'POST'])
@@ -72,7 +77,11 @@ def register():
 def login():
     if current_user.is_authenticated:
         if wants_json():
-            return api_ok(current_user.to_dict())
+            # Already signed in through the session cookie (e.g. Swagger UI or a
+            # browser tab that logged in earlier). API clients re-posting their
+            # credentials still expect a token, so mint a fresh one for this
+            # account instead of returning a bare user object.
+            return api_ok(current_user.to_dict(), token=current_user.generate_token())
         return redirect(url_for('main.index'))
 
     if request.method == 'POST':
@@ -103,6 +112,46 @@ def login():
         flash('Invalid email or password.', 'danger')
 
     return render_template('auth/login.html')
+
+
+@auth_bp.route('/forgot-password', methods=['POST'])
+def forgot_password():
+    """Start recovery without revealing whether an email exists."""
+    email = (form_value('email', '') or '').strip().lower()
+    user = User.query.filter_by(email=email, is_active=True).first()
+    payload = {'message': 'If that email is registered, password reset instructions have been sent.'}
+    if user:
+        payload['reset_token'] = _password_reset_serializer().dumps({'user_id': user.user_id})
+    if wants_json():
+        if not current_app.config.get('DEBUG'):
+            payload.pop('reset_token', None)
+        return api_ok(payload)
+    flash(payload['message'], 'info')
+    return redirect(url_for('auth.login'))
+
+
+@auth_bp.route('/reset-password', methods=['POST'])
+def reset_password():
+    token = (form_value('token', '') or '').strip()
+    password = form_value('password', '') or ''
+    confirm = form_value('confirm', password) or ''
+    if len(password) < 6:
+        return api_error('Password must be at least 6 characters.', 422) if wants_json() else redirect(url_for('auth.login'))
+    if password != confirm:
+        return api_error('Passwords do not match.', 422) if wants_json() else redirect(url_for('auth.login'))
+    try:
+        data = _password_reset_serializer().loads(token, max_age=3600)
+    except (BadSignature, SignatureExpired):
+        return api_error('Reset token is invalid or expired.', 422) if wants_json() else redirect(url_for('auth.login'))
+    user = User.query.get(data.get('user_id'))
+    if not user or not user.is_active:
+        return api_error('Reset token is invalid or expired.', 422) if wants_json() else redirect(url_for('auth.login'))
+    user.set_password(password)
+    db.session.commit()
+    if wants_json():
+        return api_ok(message='Password reset successfully.')
+    flash('Password reset successfully. Please log in.', 'success')
+    return redirect(url_for('auth.login'))
 
 
 @auth_bp.route('/logout')
@@ -136,3 +185,33 @@ def profile():
     if wants_json():
         return api_ok(current_user.to_dict())
     return render_template('auth/profile.html')
+
+
+@auth_bp.route('/change-password', methods=['POST'])
+@login_required
+def change_password():
+    """API password change — unlike /profile, this requires the current password."""
+    current_pass = form_value('current_password', '') or ''
+    new_pass = form_value('new_password', '') or ''
+    if not current_user.check_password(current_pass):
+        return api_error('Current password is incorrect.', 422)
+    if len(new_pass) < 6:
+        return api_error('New password must be at least 6 characters.', 422)
+    if new_pass == current_pass:
+        return api_error('New password must be different from the current one.', 422)
+    current_user.set_password(new_pass)
+    db.session.commit()
+    return api_ok(message='Password changed.')
+
+
+@auth_bp.route('/delete-account', methods=['POST'])
+@login_required
+def delete_account():
+    """Close the account. Orders reference the user, so the row is deactivated
+    rather than removed — is_active=False blocks login and every bearer token."""
+    if not current_user.check_password(form_value('password', '') or ''):
+        return api_error('Password is incorrect.', 422)
+    current_user.is_active = False
+    db.session.commit()
+    logout_user()
+    return api_ok(message='Account deleted.')

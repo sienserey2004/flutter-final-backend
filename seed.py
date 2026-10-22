@@ -125,7 +125,8 @@ def seed():
         admin_role    = Role(role_name='Admin')
         customer_role = Role(role_name='Customer')
         staff_role    = Role(role_name='Staff')
-        db.session.add_all([admin_role, customer_role, staff_role])
+        super_role    = Role(role_name='SuperAdmin')
+        db.session.add_all([admin_role, customer_role, staff_role, super_role])
         db.session.flush()
 
         # ── Skin types ─────────────────────────────────────────────────────────
@@ -774,6 +775,11 @@ def seed():
         admin.roles.append(admin_role)
         admin.roles.append(customer_role)
 
+        superadmin = User(name='Super Admin', email='superadmin@shop.com', phone='+855 12 000 099')
+        superadmin.set_password('superadmin123')
+        superadmin.roles.append(super_role)
+        superadmin.roles.append(customer_role)
+
         alice = User(name='Alice Johnson', email='alice@example.com', phone='+855 12 000 101')
         alice.set_password('password')
         alice.roles.append(customer_role)
@@ -786,10 +792,10 @@ def seed():
         maya.set_password('password')
         maya.roles.append(customer_role)
 
-        db.session.add_all([admin, alice, bob, maya])
+        db.session.add_all([superadmin, admin, alice, bob, maya])
         db.session.flush()
 
-        for u in [admin, alice, bob, maya]:
+        for u in [superadmin, admin, alice, bob, maya]:
             db.session.add(Cart(user_id=u.user_id))
             db.session.add(Wishlist(user_id=u.user_id))
         db.session.flush()
@@ -1075,6 +1081,7 @@ def seed():
               f"   Reviews: {Review.query.count()}")
         print(f"  Images:      {ProductImage.query.count()} generated into static/{IMAGE_REL}/")
         print()
+        print("  Super Admin: superadmin@shop.com / superadmin123")
         print("  Admin login: admin@shop.com / admin123")
         print("  User login:  alice@example.com / password  (also bob@, maya@)")
         print("  Coupons:     WELCOME10, GLOW20, FLAT15")

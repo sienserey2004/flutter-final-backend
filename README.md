@@ -22,7 +22,7 @@ spec at [`/api/openapi.json`](http://localhost:5000/api/openapi.json)
 | API docs  | OpenAPI 3.0.3 + Swagger UI                          |
 | Templates | Jinja2 + Bootstrap 5 + Bootstrap Icons              |
 | Admin UI  | AdminLTE 4                                          |
-| Auth      | Flask-Bcrypt · session cookies (web) + signed bearer tokens (mobile) |
+| Auth      | Flask-Bcrypt · session cookies (web) + JWT bearer tokens (mobile) |
 | Payments  | Bakong KHQR (Cambodian QR payment)                  |
 | Images    | Pillow                                              |
 
@@ -102,8 +102,8 @@ A `422` also carries `errors`, one message per failed field:
 
 ### Authentication
 
-`POST /api/auth/login` returns a signed, stateless token. Send it on every later
-request:
+`POST /api/auth/login` returns a stateless **JWT** (HS256). Send it on every
+later request:
 
 ```
 Authorization: Bearer <token>

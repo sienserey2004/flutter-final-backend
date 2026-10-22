@@ -1,14 +1,21 @@
 import os
 from dotenv import load_dotenv
 
-load_dotenv()
-
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 INSTANCE_DIR = os.path.join(BASE_DIR, 'instance')
+load_dotenv(os.path.join(BASE_DIR, '.env'))
 
 
 def _normalize_db_url(url: str) -> str:
-    """Ensure SQLAlchemy receives a psycopg2 URL regardless of input format."""
+    """Normalize database URLs and make relative SQLite paths cwd-independent."""
+    if url.startswith('sqlite:///'):
+        sqlite_path = url[len('sqlite:///'):]
+        if sqlite_path.startswith('/'):
+            return url
+        if sqlite_path.startswith('instance/'):
+            sqlite_path = sqlite_path[len('instance/'):]
+        absolute_path = os.path.abspath(os.path.join(INSTANCE_DIR, sqlite_path))
+        return 'sqlite:///' + absolute_path
     if url.startswith('postgresql+psycopg2://'):
         return url
     if url.startswith('postgresql+asyncpg://'):
@@ -53,6 +60,9 @@ class Config:
     # Storefront
     STORE_NAME    = os.environ.get('STORE_NAME', 'NovaMart')
     STORE_TAGLINE = os.environ.get('STORE_TAGLINE', 'Everyday products, thoughtfully selected.')
+    CONTACT_EMAIL = os.environ.get('CONTACT_EMAIL', 'support@example.com')
+    CONTACT_PHONE = os.environ.get('CONTACT_PHONE', '+855 12 000 000')
+    CONTACT_ADDRESS = os.environ.get('CONTACT_ADDRESS', 'Phnom Penh, Cambodia')
     # Applied to (subtotal − discount) at checkout. 0 = tax-inclusive pricing.
     TAX_RATE      = float(os.environ.get('TAX_RATE', '0') or 0)
 

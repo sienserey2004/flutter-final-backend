@@ -126,6 +126,25 @@ def _schemas():
                 'created_at': {'type': 'string', 'format': 'date-time'},
                 'stats': {'allOf': [_ref('CustomerStats')],
                           'description': 'Admin views only.'},
+                'enabled_modules': {'type': 'array', 'items': {'type': 'string'},
+                                    'example': ['dashboard', 'products', 'orders'],
+                                    'description': 'Admins and Super Admins only — the admin '
+                                                   'modules this user can open, in menu order. '
+                                                   'Build the admin menu from this.'},
+            },
+        },
+        'AdminModule': {
+            'type': 'object',
+            'properties': {
+                'module_key': {'type': 'string', 'example': 'coupons'},
+                'label': {'type': 'string', 'example': 'Coupons'},
+                'is_enabled': {'type': 'boolean'},
+                'always_on': {'type': 'boolean',
+                              'description': 'Listing only. True for modules that cannot be switched off.'},
+                'sort_order': {'type': 'integer'},
+                'updated_at': {'type': 'string', 'format': 'date-time', 'nullable': True},
+                'updated_by': {'type': 'string', 'nullable': True,
+                               'description': 'Name of the Super Admin who last changed it.'},
             },
         },
         'CustomerStats': {
@@ -393,11 +412,13 @@ def _auth_paths():
                           **_errors('422')},
         }},
         '/api/auth/login': {'post': {
-            'tags': ['Auth'], 'summary': 'Sign in and get a bearer token',
-            'description': 'The `token` in the response is what mobile clients send as '
-                           '`Authorization: Bearer <token>` on every later request. '
-                           'It is valid for 30 days and stops working immediately if the '
-                           'account is deactivated.',
+            'tags': ['Auth'], 'summary': 'Sign in and get a JWT',
+            'description': 'The `token` in the response is an HS256 **JWT** — what mobile '
+                           'clients send as `Authorization: Bearer <token>` on every later '
+                           'request. It carries `sub` (user id), `iat` and `exp` claims, is '
+                           'valid for 30 days and stops working immediately if the account '
+                           'is deactivated. A JSON request that is already signed in with a '
+                           'session cookie also gets a fresh `token` for that account.',
             'requestBody': _body({
                 'email': {'type': 'string', 'format': 'email', 'example': 'alice@example.com'},
                 'password': {'type': 'string', 'example': 'password'},
@@ -405,10 +426,31 @@ def _auth_paths():
             }, required=['email', 'password']),
             'responses': {
                 **_ok('Signed in.', _ref('User'),
-                      extra={'token': {'type': 'string',
-                                       'example': 'eyJ1c2VyX2lkIjo0fQ.aBcDeF.xxxxxxxx'}}),
+                      extra={'token': {
+                          'type': 'string',
+                          'description': 'HS256 JSON Web Token. Claims: `sub`, `iat`, `exp`.',
+                          'example': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.'
+                                     'eyJzdWIiOiI0IiwiaWF0IjoxNzg5NzA4MjEwLCJleHAiOjE3OTIzMDAyMTB9.'
+                                     '7qGGFvLeLzhMuwmdDOjBBM7btijmjHU6q4vLu7mjWLA',
+                      }}),
                 **_errors('401', '403'),
             },
+        }},
+        '/api/auth/forgot-password': {'post': {
+            'tags': ['Auth'], 'summary': 'Request password recovery',
+            'description': 'Always returns the same message so account emails are not disclosed. '
+                           'Development mode includes a reset_token for local demos.',
+            'requestBody': _body({'email': {'type': 'string', 'format': 'email'}}, required=['email']),
+            'responses': {**_ok('Recovery request accepted.', {'type': 'object'}), **_errors('422')},
+        }},
+        '/api/auth/reset-password': {'post': {
+            'tags': ['Auth'], 'summary': 'Set a new password from a reset token',
+            'requestBody': _body({'token': {'type': 'string'},
+                                  'password': {'type': 'string', 'minLength': 6},
+                                  'confirm': {'type': 'string'}},
+                                 required=['token', 'password']),
+            'responses': {**_ok('Password reset.', extra={'message': {'type': 'string'}}),
+                          **_errors('422')},
         }},
         '/api/auth/logout': {'get': {
             'tags': ['Auth'], 'summary': 'Sign out', 'security': AUTH,
@@ -449,6 +491,18 @@ def _catalog_paths():
                 'brands': {'type': 'array', 'items': _ref('Brand')},
                 'stats': {'type': 'object'},
             }}),
+        }},
+        '/api/about': {'get': {
+            'tags': ['Catalog'], 'summary': 'Application information',
+            'responses': _ok('About the application.', {'type': 'object'}),
+        }},
+        '/api/contact': {'get': {
+            'tags': ['Catalog'], 'summary': 'Customer contact information',
+            'responses': _ok('Contact information.', {'type': 'object'}),
+        }},
+        '/api/settings': {'get': {
+            'tags': ['Catalog'], 'summary': 'Application settings and supported options',
+            'responses': _ok('Supported currency, language and payment options.', {'type': 'object'}),
         }},
         '/api/products/': {'get': {
             'tags': ['Catalog'], 'summary': 'Search and filter products',
@@ -705,6 +759,19 @@ def _account_paths():
             'description': 'Addresses, recent orders, skin profile and subscriptions in one call.',
             'responses': {**_ok('The overview.', {'type': 'object'}), **_errors('401')},
         }},
+        '/api/account/notifications': {'get': {
+            'tags': ['Account'], 'summary': 'List in-app notifications', 'security': AUTH,
+            'responses': {**_ok('Notifications and unread count.', {'type': 'object'}), **_errors('401')},
+        }},
+        '/api/account/notifications/{notification_id}/read': {'post': {
+            'tags': ['Account'], 'summary': 'Mark one notification as read', 'security': AUTH,
+            'parameters': [_path_param('notification_id', 'Notification id.')],
+            'responses': {**_ok('Marked as read.', {'type': 'object'}), **_errors('401', '403', '404')},
+        }},
+        '/api/account/notifications/read-all': {'post': {
+            'tags': ['Account'], 'summary': 'Mark all notifications as read', 'security': AUTH,
+            'responses': {**_ok('All marked as read.', extra={'message': {'type': 'string'}}), **_errors('401')},
+        }},
         '/api/account/skin-profile': {
             'get': {'tags': ['Account'], 'summary': 'Get the skin profile', 'security': AUTH,
                     'responses': {**_ok('The profile.', _ref('SkinProfile')), **_errors('401')}},
@@ -916,10 +983,41 @@ def _admin_paths():
         }},
         '/api/admin/users/{user_id}/toggle-admin': {'post': {
             'tags': ['Admin · Customers'], 'summary': 'Grant or revoke admin', 'security': AUTH,
-            'description': 'Refused (422) on your own account, or when it would remove '
-                           'the last active admin.',
+            'description': 'Super Admin only. Refused (422) on your own account, or when it '
+                           'would remove the last active admin.',
             'parameters': [_path_param('user_id', 'User id.')],
             'responses': {**_ok('Updated.', _ref('User'), extra={'message': {'type': 'string'}}),
+                          **admin_errors, **_errors('404', '422')},
+        }},
+        '/api/admin/users/{user_id}/toggle-superadmin': {'post': {
+            'tags': ['Admin · Customers'], 'summary': 'Grant or revoke Super Admin',
+            'security': AUTH,
+            'description': 'Super Admin only. Refused (422) on your own account, or when it '
+                           'would remove the last active Super Admin.',
+            'parameters': [_path_param('user_id', 'User id.')],
+            'responses': {**_ok('Updated.', _ref('User'), extra={'message': {'type': 'string'}}),
+                          **admin_errors, **_errors('404', '422')},
+        }},
+        '/api/admin/modules': {'get': {
+            'tags': ['Admin · Modules'], 'summary': 'List admin modules', 'security': AUTH,
+            'description': 'Super Admin only. Every admin module and whether Admins can use it.',
+            'responses': {**_ok('Modules in menu order.',
+                                {'type': 'array', 'items': _ref('AdminModule')}),
+                          **admin_errors},
+        }},
+        '/api/admin/modules/{key}/toggle': {'post': {
+            'tags': ['Admin · Modules'], 'summary': 'Switch a module on or off',
+            'security': AUTH,
+            'description': 'Super Admin only. Flips the module, or sets it when the body has '
+                           '`is_enabled`. While a module is off, Admins get 403 with '
+                           '`module` set on every route in it. Refused (422) for `dashboard`.',
+            'parameters': [_path_param('key', 'Module key, e.g. `coupons`.', {'type': 'string'})],
+            'requestBody': {'required': False, 'content': {'application/json': {'schema': {
+                'type': 'object',
+                'properties': {'is_enabled': {'type': 'boolean'}},
+            }}}},
+            'responses': {**_ok('Updated.', _ref('AdminModule'),
+                                extra={'message': {'type': 'string'}}),
                           **admin_errors, **_errors('404', '422')},
         }},
         '/api/admin/users/{user_id}/toggle-active': {'post': {
@@ -1118,13 +1216,15 @@ Every endpoint answers with the same envelope, so a client can branch on one fie
 A `422` also carries an `errors` array with one message per failed field.
 
 ### Authentication
-`POST /api/auth/login` returns a **token**. Send it on every later request:
+`POST /api/auth/login` returns a **JWT** (JSON Web Token, HS256). Send it on
+every later request:
 
 ```
 Authorization: Bearer <token>
 ```
 
-Tokens are signed, stateless and valid for 30 days. They stop working
+The token carries the standard `sub` (user id), `iat` and `exp` claims, is
+signed with the server secret, and is valid for 30 days. It stops working
 immediately if the account is deactivated. Browsers may use the session cookie
 instead — both are accepted.
 
@@ -1170,14 +1270,17 @@ def build_spec():
             {'url': '/', 'description': 'This server'},
         ],
         'tags': [
-            {'name': 'Auth', 'description': 'Registration, sign-in and the bearer token.'},
+            {'name': 'Auth', 'description': 'Registration, sign-in and the JWT bearer token.'},
             {'name': 'Catalog', 'description': 'Products, search, filters and the home feed.'},
             {'name': 'Categories', 'description': 'The category tree and category browsing.'},
             {'name': 'Cart', 'description': 'The signed-in user\'s shopping cart.'},
             {'name': 'Orders', 'description': 'Checkout, order history and KHQR payment.'},
             {'name': 'Account', 'description': 'Addresses, wishlist, skin profile, returns.'},
             {'name': 'Reviews', 'description': 'Product ratings and written reviews.'},
-            {'name': 'Admin', 'description': 'Back-office. Requires the Admin role.'},
+            {'name': 'Admin', 'description': 'Back-office. Requires the Admin or SuperAdmin role. '
+                                             'Routes in a module a Super Admin has switched off '
+                                             'return 403 for Admins.'},
+            {'name': 'Admin · Modules', 'description': 'Super Admin: switch admin modules on or off.'},
             {'name': 'Admin · Customers', 'description': 'Customer management.'},
             {'name': 'Admin · Catalog', 'description': 'Category, product, variant and image CRUD.'},
             {'name': 'Admin · Orders', 'description': 'Order pipeline and fulfilment.'},
@@ -1186,8 +1289,10 @@ def build_spec():
         'components': {
             'securitySchemes': {
                 'bearerAuth': {
-                    'type': 'http', 'scheme': 'bearer',
-                    'description': 'The `token` from POST /api/auth/login.',
+                    'type': 'http', 'scheme': 'bearer', 'bearerFormat': 'JWT',
+                    'description': 'The HS256 JWT returned as `token` by '
+                                   'POST /api/auth/login. Send it as '
+                                   '`Authorization: Bearer <token>`.',
                 },
             },
             'schemas': _schemas(),

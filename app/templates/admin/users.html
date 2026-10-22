@@ -35,6 +35,7 @@
       <div class="col-6 col-md-3">
         <select name="role" class="form-select form-select-sm" aria-label="Filter by role">
           <option value="">All roles</option>
+          <option value="SuperAdmin" {{ 'selected' if role == 'SuperAdmin' }}>Super Admins</option>
           <option value="Admin"    {{ 'selected' if role == 'Admin' }}>Admins</option>
           <option value="Customer" {{ 'selected' if role == 'Customer' }}>Customers</option>
         </select>
@@ -87,7 +88,7 @@
             <td class="small text-secondary">{{ user.phone or '—' }}</td>
             <td>
               {% for r in user.roles %}
-                <span class="badge text-bg-{{ 'primary' if r.role_name == 'Admin' else 'secondary' }} me-1">{{ r.role_name }}</span>
+                <span class="badge text-bg-{{ {'SuperAdmin': 'danger', 'Admin': 'primary'}.get(r.role_name, 'secondary') }} me-1">{{ r.role_name }}</span>
               {% endfor %}
             </td>
             <td>{{ m.bool_badge(user.is_active, 'Active', 'Deactivated') }}</td>
@@ -102,6 +103,7 @@
                  class="btn btn-outline-secondary btn-sm" title="Edit"
                  aria-label="Edit {{ user.name }}"><i class="bi bi-pencil"></i></a>
 
+              {% if is_super_admin %}
               <form action="{{ url_for('admin.toggle_admin', user_id=user.user_id) }}"
                     method="post" class="d-inline">
                 <button type="submit" {{ 'disabled' if is_self }}
@@ -111,6 +113,7 @@
                   <i class="bi bi-{{ 'shield-fill-minus' if user.has_role('Admin') else 'shield-plus' }}"></i>
                 </button>
               </form>
+              {% endif %}
 
               <form action="{{ url_for('admin.toggle_user_active', user_id=user.user_id) }}"
                     method="post" class="d-inline">

@@ -77,3 +77,29 @@
          placeholder="{{ placeholder }}" aria-label="{{ placeholder }}">
 </div>
 {%- endmacro %}
+
+
+{# File picker for an image stored in the project (static/images/uploads/…).
+   The parent <form> must use enctype="multipart/form-data". #}
+{% macro image_upload(name, current=none, label='Image', help=none) -%}
+  <label class="form-label" for="{{ name }}">{{ label }}</label>
+  {% if current %}
+    <div class="d-flex align-items-center gap-3 mb-2">
+      <img src="{{ current if current.startswith('http') else url_for('static', filename=current) }}"
+           alt="" class="rounded border object-fit-cover" style="width:72px;height:72px;">
+      <div class="small">
+        <div class="font-monospace text-secondary text-break">{{ current }}</div>
+        <div class="form-check mt-1">
+          <input class="form-check-input" type="checkbox" id="remove_{{ name }}" name="remove_{{ name }}" value="1">
+          <label class="form-check-label" for="remove_{{ name }}">Remove image</label>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+  <input type="file" class="form-control" id="{{ name }}" name="{{ name }}"
+         accept="image/jpeg,image/png,image/webp,image/gif">
+  <div class="form-text">
+    {{ help or 'JPG, PNG, WEBP or GIF, up to 5 MB. Saved inside the project.' }}
+    {% if current %}Choose a file to replace the current image.{% endif %}
+  </div>
+{%- endmacro %}

@@ -1,0 +1,56 @@
+{% extends "admin/base_admin.html" %}
+{% import "admin/_macros.html" as m %}
+{% block title %}Modules{% endblock %}
+
+{% block admin_content %}
+<div class="card">
+  <div class="card-header">
+    <h3 class="card-title">Modules
+      <span class="text-secondary fs-6">({{ modules|selectattr('is_enabled')|list|length }} of {{ modules|length }} on)</span>
+    </h3>
+  </div>
+  <div class="card-body pb-0">
+    <p class="text-secondary small mb-3">
+      Switch a module off to hide it from every Admin's menu and block its pages and API.
+      Super Admins always keep full access.
+    </p>
+  </div>
+  <div class="card-body p-0">
+    <table class="table table-hover mb-0 align-middle">
+      <thead>
+        <tr><th>Module</th><th>Section</th><th>Status</th><th>Last changed</th><th class="text-end"></th></tr>
+      </thead>
+      <tbody>
+        {% for mod in modules %}
+        {% set icon, section = meta[mod.module_key] %}
+        <tr>
+          <td class="fw-semibold"><i class="bi bi-{{ icon }} me-2 text-secondary" aria-hidden="true"></i>{{ mod.label }}</td>
+          <td class="small text-secondary">{{ section|title }}</td>
+          <td>
+            {% if mod.module_key in always_on %}
+              <span class="badge text-bg-light">Always on</span>
+            {% else %}
+              {{ m.bool_badge(mod.is_enabled, 'Enabled', 'Disabled') }}
+            {% endif %}
+          </td>
+          <td class="small text-secondary">
+            {% if mod.editor %}{{ mod.editor.name }} · {{ mod.updated_at.strftime('%b %d, %Y') }}{% else %}—{% endif %}
+          </td>
+          <td class="text-end">
+            {% if mod.module_key not in always_on %}
+            <form action="{{ url_for('admin.toggle_module', key=mod.module_key) }}" method="post" class="m-0">
+              <button type="submit" class="btn btn-sm btn-outline-{{ 'secondary' if mod.is_enabled else 'success' }}"
+                      aria-label="{{ 'Disable' if mod.is_enabled else 'Enable' }} {{ mod.label }}">
+                <i class="bi bi-{{ 'toggle-on' if mod.is_enabled else 'toggle-off' }} me-1" aria-hidden="true"></i>
+                {{ 'Disable' if mod.is_enabled else 'Enable' }}
+              </button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

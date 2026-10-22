@@ -21,7 +21,7 @@
   ] %}
   {% for value, label, icon, color, endpoint in stat_items %}
   <div class="col-lg-2 col-6">
-    {{ m.small_box(value, label, icon, color, url_for(endpoint) if endpoint else none) }}
+    {{ m.small_box(value, label, icon, color, url_for(endpoint) if endpoint and endpoint_on(endpoint) else none) }}
   </div>
   {% endfor %}
 </div>
@@ -35,7 +35,7 @@
     (stats.pending_alerts, 'Waiting on stock', 'bell',                 'admin.stock_alerts'),
     (stats.subscriptions,  'Active refills',   'arrow-repeat',         'admin.subscriptions'),
   ] %}
-  {% for val, label, icon, endpoint in alerts %}
+  {% for val, label, icon, endpoint in alerts if endpoint_on(endpoint) %}
   <div class="col-lg col-6">
     <a href="{{ url_for(endpoint) }}" class="text-decoration-none">
       {{ m.info_box(val, label, icon, 'danger' if val else 'secondary') }}
@@ -72,7 +72,7 @@
       ('New Promotion',  'admin.new_promotion',   'megaphone'),
     ] %}
     <div class="d-flex flex-wrap gap-2">
-      {% for label, endpoint, icon in quick %}
+      {% for label, endpoint, icon in quick if endpoint_on(endpoint) %}
         <a href="{{ url_for(endpoint) }}" class="btn btn-outline-secondary btn-sm">
           <i class="bi bi-{{ icon }} me-1"></i>{{ label }}
         </a>
@@ -87,9 +87,11 @@
     <div class="card mb-4" data-table-wrap>
       <div class="card-header">
         <h3 class="card-title">Recent orders</h3>
+        {% if module_on('orders') %}
         <div class="card-tools">
           <a href="{{ url_for('admin.orders') }}" class="btn btn-sm btn-outline-secondary">View all</a>
         </div>
+        {% endif %}
       </div>
       <div class="card-body p-0">
         <table class="table table-hover mb-0" id="recent-orders-table">
@@ -103,8 +105,10 @@
               <td class="font-monospace">${{ "%.2f"|format(order.total_amount|float) }}</td>
               <td>{{ m.status_badge(order.status) }}</td>
               <td>
+                {% if module_on('orders') %}
                 <a href="{{ url_for('admin.order_detail', order_id=order.order_id) }}"
                    class="btn btn-outline-secondary btn-sm">View</a>
+                {% endif %}
               </td>
             </tr>
             {% endfor %}
@@ -125,7 +129,7 @@
           <tbody>
             {% for v in low_stock %}
             <tr>
-              <td><a href="{{ url_for('admin.variants', product_id=v.product_id) }}">{{ v.product.name }}</a></td>
+              <td>{% if module_on('products') %}<a href="{{ url_for('admin.variants', product_id=v.product_id) }}">{{ v.product.name }}</a>{% else %}{{ v.product.name }}{% endif %}</td>
               <td class="text-secondary small">{{ v.label() }}</td>
               <td class="font-monospace">
                 <span class="badge text-bg-{{ 'danger' if v.stock == 0 else 'warning' }}">{{ v.stock }}</span>
@@ -150,7 +154,7 @@
             {% for v in expiring %}
             <tr>
               <td>
-                <a href="{{ url_for('admin.variants', product_id=v.product_id) }}">{{ v.product.name }}</a>
+                {% if module_on('products') %}<a href="{{ url_for('admin.variants', product_id=v.product_id) }}">{{ v.product.name }}</a>{% else %}{{ v.product.name }}{% endif %}
                 <div class="text-secondary small">{{ v.label() }}</div>
               </td>
               <td class="font-monospace small">{{ v.batch_no or '—' }}</td>

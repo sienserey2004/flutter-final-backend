@@ -10,9 +10,13 @@ from app.models import (db, User, Role, Brand, Category, Product, ProductVariant
                         Shipping, ShippingMethod, Coupon, Promotion, InventoryLog,
                         Review, ReturnRequest, BackInStockAlert, Subscription,
                         BakongMerchant, PaymentTransaction, Address, Cart,
-                        CartItem, Wishlist, WishlistItem)
+                        CartItem, Wishlist, WishlistItem, AdminModule)
 from app.api import wants_json, api_ok, api_error, form_value, form_list
-from app.utils import slugify, unique_slug
+from app.utils import (slugify, unique_slug, save_image_upload, delete_uploaded_image,
+                       is_external_url, ImageUploadError)
+from app.admin_modules import (MODULES, MODULE_LABELS, ALWAYS_ON,
+                               module_for_endpoint, module_enabled,
+                               sync_admin_modules)
 import hashlib
 from bakong_khqr import KHQR
 import qrcode
@@ -34,11 +38,75 @@ def admin_required(f):
     return login_required(decorated)
 
 
+def superadmin_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not current_user.is_authenticated or not current_user.is_super_admin():
+            abort(403)
+        return f(*args, **kwargs)
+    return login_required(decorated)
+
+
+@admin_bp.before_request
+def enforce_module_access():
+    """Refuse admin routes whose module a Super Admin has switched off.
+
+    Runs for both /admin and /api/admin. Signed-out users and non-admins are
+    left to the route decorators, which answer them with 401/403 as before."""
+    if not current_user.is_authenticated or not current_user.is_admin():
+        return None
+    if current_user.is_super_admin():
+        return None
+    module = module_for_endpoint(request.endpoint, request.view_args)
+    if module and module_enabled(module):
+        return None
+    message = (f'The {MODULE_LABELS[module]} module is disabled.' if module
+               else 'Only a Super Admin can use this page.')
+    if wants_json():
+        return api_error(message, 403, module=module)
+    abort(403)
+
+
 def _checkbox(name, default=False):
     """HTML checkbox or JSON boolean."""
     if request.is_json:
         return bool((request.get_json(silent=True) or {}).get(name, default))
     return name in request.form
+
+
+def _image_input(field, current, folder):
+    """Resolve an image field to a /static-relative path stored in the project.
+
+    - a file uploaded under `field` is saved to static/images/uploads/<folder>/
+    - a `remove_<field>` checkbox clears it
+    - JSON callers may send a local static path; external URLs are refused
+    - otherwise the current value is kept
+    Raises ImageUploadError on a bad file or an external URL."""
+    upload = request.files.get(field)
+    if upload and upload.filename:
+        path = save_image_upload(upload, folder)
+        if current != path:
+            delete_uploaded_image(current)
+        return path
+    if _checkbox(f'remove_{field}'):
+        delete_uploaded_image(current)
+        return None
+    text = form_value(field)
+    if text is None:
+        return current
+    text = str(text).strip()
+    if is_external_url(text):
+        raise ImageUploadError('External image URLs are not allowed — upload the image file instead.')
+    return text or None
+
+
+@admin_bp.errorhandler(ImageUploadError)
+def _image_upload_error(err):
+    db.session.rollback()
+    if wants_json():
+        return api_error(str(err), 422)
+    flash(str(err), 'danger')
+    return redirect(request.url)
 
 
 def _date(name):
@@ -87,21 +155,43 @@ def _months_back(n):
 # these render on every admin page, not just the dashboard.
 @admin_bp.context_processor
 def inject_admin_chrome():
+    user = current_user if current_user.is_authenticated else None
+
+    def module_on(key):
+        return module_enabled(key, user)
+
+    def endpoint_on(endpoint, **view_args):
+        """Whether a link to this admin endpoint would be allowed."""
+        if user and user.is_super_admin():
+            return True
+        module = module_for_endpoint(endpoint, view_args)
+        return bool(module) and module_on(module)
+
     expiry_cutoff = (datetime.utcnow() + timedelta(days=EXPIRY_WARNING_DAYS)).date()
+    inventory_on, returns_on, alerts_on = (module_on('inventory'),
+                                           module_on('returns'),
+                                           module_on('stock_alerts'))
     return {
+        'module_on': module_on,
+        'endpoint_on': endpoint_on,
+        'is_super_admin': bool(user and user.is_super_admin()),
         'admin_low_stock_count': ProductVariant.query
-            .filter(ProductVariant.stock <= LOW_STOCK_THRESHOLD).count(),
+            .filter(ProductVariant.stock <= LOW_STOCK_THRESHOLD).count()
+            if inventory_on else 0,
         'admin_expiring_count': ProductVariant.query
             .filter(ProductVariant.expiry_date.isnot(None),
                     ProductVariant.expiry_date <= expiry_cutoff,
-                    ProductVariant.stock > 0).count(),
+                    ProductVariant.stock > 0).count()
+            if inventory_on else 0,
         'admin_open_returns_count': ReturnRequest.query
-            .filter(ReturnRequest.status.in_(['Requested', 'Approved'])).count(),
+            .filter(ReturnRequest.status.in_(['Requested', 'Approved'])).count()
+            if returns_on else 0,
         'admin_pending_alerts_count': BackInStockAlert.query
-            .filter_by(notified_at=None).count(),
+            .filter_by(notified_at=None).count() if alerts_on else 0,
         'admin_pending_alerts_preview': BackInStockAlert.query
             .filter_by(notified_at=None)
-            .order_by(BackInStockAlert.created_at.desc()).limit(5).all(),
+            .order_by(BackInStockAlert.created_at.desc()).limit(5).all()
+            if alerts_on else [],
     }
 
 
@@ -193,7 +283,32 @@ def _other_active_admins(user_id):
     is the only active account left."""
     return (User.query.filter(User.is_active.is_(True),
                               User.user_id != user_id)
-            .filter(User.roles.any(Role.role_name == 'Admin')).count())
+            .filter(User.roles.any(Role.role_name.in_(['Admin', 'SuperAdmin'])))
+            .count())
+
+
+def _other_active_super_admins(user_id):
+    """Same idea as _other_active_admins, for the Super Admin role — without
+    one nobody can manage modules or admins any more."""
+    return (User.query.filter(User.is_active.is_(True),
+                              User.user_id != user_id)
+            .filter(User.roles.any(Role.role_name == 'SuperAdmin')).count())
+
+
+def _refuse(message, status=422):
+    """Answer a refused user-management action: JSON error or flash + back."""
+    if wants_json():
+        return api_error(message, status)
+    flash(message, 'warning')
+    return redirect(request.referrer or url_for('admin.users'))
+
+
+def _super_admin_guard(user):
+    """Only a Super Admin may change a Super Admin's account. Returns a
+    response to send back, or None when the action may go ahead."""
+    if user.is_super_admin() and not current_user.is_super_admin():
+        return _refuse('Only a Super Admin can change a Super Admin account.', 403)
+    return None
 
 
 @admin_bp.route('/users')
@@ -201,7 +316,7 @@ def _other_active_admins(user_id):
 def users():
     """Customer list with search and role/status filters."""
     q      = (request.args.get('q') or '').strip()
-    role   = (request.args.get('role') or '').strip()     # Admin | Customer
+    role   = (request.args.get('role') or '').strip()     # SuperAdmin | Admin | Customer
     status = (request.args.get('status') or '').strip()   # active | inactive
 
     query = User.query
@@ -223,7 +338,8 @@ def users():
         'total':    User.query.count(),
         'active':   User.query.filter(User.is_active.is_(True)).count(),
         'inactive': User.query.filter(User.is_active.is_(False)).count(),
-        'admins':   User.query.filter(User.roles.any(Role.role_name == 'Admin')).count(),
+        'admins':   User.query.filter(User.roles.any(
+                        Role.role_name.in_(['Admin', 'SuperAdmin']))).count(),
         'new_30d':  User.query.filter(
                         User.created_at >= datetime.utcnow() - timedelta(days=30)).count(),
     }
@@ -283,6 +399,8 @@ def new_user():
             errors.append('That email is already registered.')
         if len(password) < 6:
             errors.append('Password must be at least 6 characters.')
+        if is_admin and not current_user.is_super_admin():
+            errors.append('Only a Super Admin can create admin accounts.')
 
         if errors:
             if wants_json():
@@ -323,6 +441,9 @@ def edit_user(user_id):
     user = User.query.get_or_404(user_id)
 
     if request.method == 'POST':
+        refused = _super_admin_guard(user)
+        if refused:
+            return refused
         name     = (form_value('name', user.name) or '').strip()
         email    = (form_value('email', user.email) or '').strip().lower()
         phone    = (form_value('phone', user.phone or '') or '').strip()
@@ -362,28 +483,46 @@ def edit_user(user_id):
 
 
 @admin_bp.route('/users/<int:user_id>/toggle-admin', methods=['POST'])
-@admin_required
+@superadmin_required
 def toggle_admin(user_id):
     user = User.query.get_or_404(user_id)
     if user.user_id == current_user.user_id:
-        if wants_json():
-            return api_error('Cannot modify your own role.', 422)
-        flash("Cannot modify your own role.", 'warning')
-        return redirect(request.referrer or url_for('admin.users'))
+        return _refuse('Cannot modify your own role.')
 
     admin_role = _role('Admin')
     if user.has_role('Admin'):
-        if not _other_active_admins(user.user_id):
-            message = 'This is the last active admin — promote someone else first.'
-            if wants_json():
-                return api_error(message, 422)
-            flash(message, 'warning')
-            return redirect(request.referrer or url_for('admin.users'))
+        if not user.is_super_admin() and not _other_active_admins(user.user_id):
+            return _refuse('This is the last active admin — promote someone else first.')
         user.roles.remove(admin_role)
         message, category = f'{user.name} is no longer Admin.', 'info'
     else:
         user.roles.append(admin_role)
         message, category = f'{user.name} is now Admin.', 'success'
+    db.session.commit()
+
+    if wants_json():
+        return api_ok(user.to_dict(), message=message)
+    flash(message, category)
+    return redirect(request.referrer or url_for('admin.users'))
+
+
+@admin_bp.route('/users/<int:user_id>/toggle-superadmin', methods=['POST'])
+@superadmin_required
+def toggle_superadmin(user_id):
+    """Grant or remove the Super Admin role."""
+    user = User.query.get_or_404(user_id)
+    if user.user_id == current_user.user_id:
+        return _refuse('Cannot modify your own role.')
+
+    super_role = _role('SuperAdmin')
+    if user.is_super_admin():
+        if not _other_active_super_admins(user.user_id):
+            return _refuse('This is the last active Super Admin — promote someone else first.')
+        user.roles.remove(super_role)
+        message, category = f'{user.name} is no longer Super Admin.', 'info'
+    else:
+        user.roles.append(super_role)
+        message, category = f'{user.name} is now Super Admin.', 'success'
     db.session.commit()
 
     if wants_json():
@@ -398,12 +537,18 @@ def toggle_user_active(user_id):
     """Suspend or restore an account. A suspended user can't sign in, and any
     API token they still hold stops working on their next request."""
     user = User.query.get_or_404(user_id)
+    refused = _super_admin_guard(user)
+    if refused:
+        return refused
 
     if user.user_id == current_user.user_id:
         reason = 'Cannot deactivate your own account.'
-    elif (user.is_active and user.has_role('Admin')
+    elif (user.is_active and user.is_admin()
           and not _other_active_admins(user.user_id)):
         reason = 'This is the last active admin — promote someone else first.'
+    elif (user.is_active and user.is_super_admin()
+          and not _other_active_super_admins(user.user_id)):
+        reason = 'This is the last active Super Admin — promote someone else first.'
     else:
         reason = None
 
@@ -430,6 +575,9 @@ def delete_user(user_id):
     """Hard-delete an account. Refused once the customer has placed an order —
     order history is a financial record and has to survive; deactivate instead."""
     user = User.query.get_or_404(user_id)
+    refused = _super_admin_guard(user)
+    if refused:
+        return refused
     order_count = user.orders.count()
 
     if user.user_id == current_user.user_id:
@@ -437,8 +585,10 @@ def delete_user(user_id):
     elif order_count:
         reason = (f'{user.name} has {order_count} order(s). '
                   'Deactivate the account instead so order history is kept.')
-    elif user.has_role('Admin') and not _other_active_admins(user.user_id):
+    elif user.is_admin() and not _other_active_admins(user.user_id):
         reason = 'This is the last active admin — promote someone else first.'
+    elif user.is_super_admin() and not _other_active_super_admins(user.user_id):
+        reason = 'This is the last active Super Admin — promote someone else first.'
     else:
         reason = None
 
@@ -501,7 +651,7 @@ def new_brand():
             name=name,
             slug=unique_slug(Brand, name),
             country=(form_value('country', '') or '').strip() or None,
-            logo=(form_value('logo', '') or '').strip() or None,
+            logo=_image_input('logo', None, 'brands'),
             description=(form_value('description', '') or '').strip() or None,
             is_active=_checkbox('is_active'),
         )
@@ -531,7 +681,7 @@ def edit_brand(brand_id):
             brand.slug = unique_slug(Brand, new_name, pk_field='brand_id', pk_value=brand.brand_id)
         brand.name = new_name
         brand.country = (form_value('country', '') or '').strip() or None
-        brand.logo = (form_value('logo', '') or '').strip() or None
+        brand.logo = _image_input('logo', brand.logo, 'brands')
         brand.description = (form_value('description', '') or '').strip() or None
         brand.is_active = _checkbox('is_active')
         db.session.commit()
@@ -588,7 +738,7 @@ def new_category():
             slug=unique_slug(Category, name),
             parent_id=form_value('parent_id', cast=int) or None,
             description=(form_value('description', '') or '').strip() or None,
-            image=(form_value('image', '') or '').strip() or None,
+            image=_image_input('image', None, 'categories'),
             sort_order=form_value('sort_order', 0, cast=int) or 0,
         )
         db.session.add(cat)
@@ -623,7 +773,7 @@ def edit_category(cat_id):
             return render_template('admin/category_form.html', category=cat, parents=parents)
         cat.parent_id   = parent_id
         cat.description = (form_value('description', '') or '').strip() or None
-        cat.image       = (form_value('image', '') or '').strip() or None
+        cat.image       = _image_input('image', cat.image, 'categories')
         cat.sort_order  = form_value('sort_order', 0, cast=int) or 0
         db.session.commit()
         flash('Category updated.', 'success')
@@ -1043,15 +1193,15 @@ def delete_product_ingredient(product_id, link_id):
 def product_images(product_id):
     product = Product.query.get_or_404(product_id)
     if request.method == 'POST':
-        url = (form_value('url', '') or '').strip()
+        url = _image_input('url', None, 'products')
         if not url:
             if wants_json():
-                return api_error('Image URL required.', 422)
-            flash('Image URL required.', 'danger')
+                return api_error('Choose an image file to upload.', 422)
+            flash('Choose an image file to upload.', 'danger')
             return redirect(url_for('admin.product_images', product_id=product_id))
         is_primary = _checkbox('is_primary')
         if is_primary:
-            product.images.update({'is_primary': False})
+            ProductImage.query.filter_by(product_id=product_id).update({'is_primary': False})
         image = ProductImage(
             product_id=product_id, url=url,
             alt_text=(form_value('alt_text', '') or '').strip() or None,
@@ -1076,7 +1226,7 @@ def set_primary_image(product_id, image_id):
     image = ProductImage.query.get_or_404(image_id)
     if image.product_id != product_id:
         abort(404)
-    product.images.update({'is_primary': False})
+    ProductImage.query.filter_by(product_id=product_id).update({'is_primary': False})
     image.is_primary = True
     db.session.commit()
     flash('Primary image set.', 'success')
@@ -1091,8 +1241,10 @@ def delete_product_image(product_id, image_id):
     image = ProductImage.query.get_or_404(image_id)
     if image.product_id != product_id:
         abort(404)
+    path = image.url
     db.session.delete(image)
     db.session.commit()
+    delete_uploaded_image(path)
     flash('Image removed.', 'info')
     if wants_json():
         return api_ok(message='Image removed.')
@@ -1119,7 +1271,7 @@ def _save_variant_fields(variant):
     variant.weight_grams = form_value('weight_grams', cast=int) or None
     variant.batch_no = (form_value('batch_no', '') or '').strip() or None
     variant.expiry_date = _date('expiry_date')
-    variant.image  = (form_value('image', '') or '').strip() or None
+    variant.image  = _image_input('image', variant.image, 'variants')
 
 
 @admin_bp.route('/products/<int:product_id>/variants/new', methods=['GET', 'POST'])
@@ -1226,7 +1378,7 @@ def new_bundle():
         bundle = Bundle(
             name=name, slug=unique_slug(Bundle, name), price=price,
             description=(form_value('description', '') or '').strip() or None,
-            image=(form_value('image', '') or '').strip() or None,
+            image=_image_input('image', None, 'bundles'),
             is_active=True)
         db.session.add(bundle)
         db.session.commit()
@@ -1251,7 +1403,7 @@ def edit_bundle(bundle_id):
         bundle.name = new_name
         bundle.price = form_value('price', cast=float)
         bundle.description = (form_value('description', '') or '').strip() or None
-        bundle.image = (form_value('image', '') or '').strip() or None
+        bundle.image = _image_input('image', bundle.image, 'bundles')
         bundle.is_active = _checkbox('is_active')
         db.session.commit()
         flash('Bundle updated.', 'success')
@@ -1876,3 +2028,45 @@ def download_qr(tx_id):
 
     return send_file(buffer, mimetype='image/png',
                      download_name=f'khqr_payment_{tx.transaction_id}.png')
+
+
+# ── Modules (Super Admin) ──────────────────────────────────────────────────────
+@admin_bp.route('/modules')
+@superadmin_required
+def modules():
+    """Every admin module with its on/off switch."""
+    sync_admin_modules()
+    rows = AdminModule.query.order_by(AdminModule.sort_order).all()
+    meta = {key: (icon, section) for key, _label, icon, section in MODULES}
+    rows = [r for r in rows if r.module_key in meta]   # skip retired modules
+
+    if wants_json():
+        return api_ok([dict(r.to_dict(), always_on=r.module_key in ALWAYS_ON)
+                       for r in rows])
+    return render_template('admin/modules.html', modules=rows, meta=meta,
+                           always_on=ALWAYS_ON)
+
+
+@admin_bp.route('/modules/<key>/toggle', methods=['POST'])
+@superadmin_required
+def toggle_module(key):
+    """Switch a module on or off for every Admin. JSON clients may send
+    {"is_enabled": true|false} to set it rather than flip it."""
+    if key not in MODULE_LABELS:
+        abort(404)
+    if key in ALWAYS_ON:
+        return _refuse(f'{MODULE_LABELS[key]} is always on.')
+
+    sync_admin_modules()
+    row = AdminModule.query.get(key)
+    body = request.get_json(silent=True) or {}
+    row.is_enabled = bool(body['is_enabled']) if 'is_enabled' in body else not row.is_enabled
+    row.updated_by = current_user.user_id
+    db.session.commit()
+
+    message = (f'{row.label} enabled for admins.' if row.is_enabled
+               else f'{row.label} disabled for admins.')
+    if wants_json():
+        return api_ok(row.to_dict(), message=message)
+    flash(message, 'success' if row.is_enabled else 'info')
+    return redirect(url_for('admin.modules'))

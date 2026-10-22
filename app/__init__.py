@@ -100,6 +100,8 @@ def create_app(config_name='default'):
         try:
             db.create_all()
             _ensure_added_columns()
+            from app.admin_modules import sync_admin_modules
+            sync_admin_modules()
             print("[db] Tables created/verified OK")
         except ProgrammingError as e:
             if 'does not exist' in str(e):

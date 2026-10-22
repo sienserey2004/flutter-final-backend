@@ -1,9 +1,23 @@
+import hashlib
+import time
 from datetime import datetime
+import jwt
 from flask import current_app
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
 from flask_bcrypt import Bcrypt
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
+
+
+def static_image_url(value):
+    """Absolute URL for an image stored under /static (legacy http URLs pass through)."""
+    if not value:
+        return None
+    if value.startswith('http://') or value.startswith('https://'):
+        return value
+    from flask import url_for
+    return url_for('static', filename=value, _external=True)
+
 
 db = SQLAlchemy()
 bcrypt = Bcrypt()
@@ -70,23 +84,67 @@ class User(UserMixin, db.Model):
                                    cascade='all, delete-orphan')
     addresses   = db.relationship('Address', backref='user', lazy='dynamic',
                                   cascade='all, delete-orphan')
+    notifications = db.relationship('Notification', backref='user', lazy='dynamic',
+                                    cascade='all, delete-orphan')
 
     TOKEN_MAX_AGE = 60 * 60 * 24 * 30  # 30 days
+    JWT_ALGORITHM = 'HS256'
 
     def get_id(self):
         return str(self.user_id)
 
     @staticmethod
+    def _jwt_secret():
+        # Derive a fixed 32-byte HMAC key so HS256 always has a full-strength
+        # signing key regardless of how long SECRET_KEY is (avoids PyJWT's
+        # short-key warning) and stays symmetric between encode and decode.
+        secret = current_app.config['SECRET_KEY']
+        if isinstance(secret, str):
+            secret = secret.encode('utf-8')
+        return hashlib.sha256(secret).digest()
+
+    @staticmethod
     def _token_serializer():
+        # Kept only so tokens issued before the switch to JWT still verify until
+        # they expire. New tokens are always JWTs — see generate_token().
         return URLSafeTimedSerializer(current_app.config['SECRET_KEY'], salt='auth-token')
 
     def generate_token(self):
-        """Create a signed, stateless token identifying this user (for API clients
-        that can't rely on cookies, e.g. cross-origin or mobile)."""
-        return User._token_serializer().dumps({'user_id': self.user_id})
+        """Issue a stateless HS256 JSON Web Token (JWT) for this user.
+
+        Mobile / cross-origin API clients that can't rely on the session cookie
+        send it back as `Authorization: Bearer <token>`. Claims: `sub` (the user
+        id), `iat` (issued at) and `exp` (TOKEN_MAX_AGE seconds from now).
+        """
+        now = int(time.time())
+        payload = {
+            'sub': str(self.user_id),
+            'iat': now,
+            'exp': now + User.TOKEN_MAX_AGE,
+        }
+        return jwt.encode(payload, User._jwt_secret(), algorithm=User.JWT_ALGORITHM)
 
     @staticmethod
     def verify_token(token):
+        """Resolve a bearer token to its user (JWT first, then legacy tokens).
+
+        A deactivated account keeps a valid signature until the token expires, so
+        the caller still re-checks `is_active` on every request.
+        """
+        try:
+            payload = jwt.decode(token, User._jwt_secret(),
+                                 algorithms=[User.JWT_ALGORITHM])
+        except jwt.PyJWTError:
+            return User._verify_legacy_token(token)
+        try:
+            user_id = int(payload.get('sub'))
+        except (TypeError, ValueError):
+            return None
+        return User.query.get(user_id)
+
+    @staticmethod
+    def _verify_legacy_token(token):
+        """Verify an itsdangerous token issued before JWTs existed (backward compat)."""
         try:
             data = User._token_serializer().loads(token, max_age=User.TOKEN_MAX_AGE)
         except (BadSignature, SignatureExpired):
@@ -102,8 +160,13 @@ class User(UserMixin, db.Model):
     def has_role(self, role_name):
         return self.roles.filter_by(role_name=role_name).first() is not None
 
+    def is_super_admin(self):
+        return self.has_role('SuperAdmin')
+
     def is_admin(self):
-        return self.has_role('Admin')
+        # A Super Admin can do everything an Admin can without also holding
+        # the Admin role.
+        return self.has_role('Admin') or self.is_super_admin()
 
     def default_address(self):
         return (self.addresses.filter_by(is_default=True).first()
@@ -138,6 +201,10 @@ class User(UserMixin, db.Model):
         }
         if include_stats:
             data['stats'] = self.order_stats()
+        if self.is_admin():
+            # Lets the mobile client build its admin menu from what's switched on.
+            from app.admin_modules import enabled_module_keys
+            data['enabled_modules'] = enabled_module_keys(self)
         return data
 
     def __repr__(self):
@@ -157,6 +224,33 @@ class Role(db.Model):
         return f'<Role {self.role_name}>'
 
 
+class AdminModule(db.Model):
+    """One admin-panel module (Orders, Coupons, ...) that a Super Admin can
+    switch on or off for every Admin. Super Admins always see every module."""
+    __tablename__ = 'admin_modules'
+    module_key = db.Column(db.String(50), primary_key=True)
+    label      = db.Column(db.String(100), nullable=False)
+    is_enabled = db.Column(db.Boolean, default=True, nullable=False)
+    sort_order = db.Column(db.Integer, default=0, nullable=False)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_by = db.Column(db.Integer, db.ForeignKey('users.user_id', ondelete='SET NULL'))
+
+    editor = db.relationship('User', foreign_keys=[updated_by])
+
+    def to_dict(self):
+        return {
+            'module_key': self.module_key,
+            'label': self.label,
+            'is_enabled': self.is_enabled,
+            'sort_order': self.sort_order,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'updated_by': self.editor.name if self.editor else None,
+        }
+
+    def __repr__(self):
+        return f'<AdminModule {self.module_key}>'
+
+
 # ─── 3. Brands ─────────────────────────────────────────────────────────────────
 class Brand(db.Model):
     __tablename__ = 'brands'
@@ -171,12 +265,15 @@ class Brand(db.Model):
 
     products = db.relationship('Product', backref='brand', lazy='dynamic')
 
+    def logo_url(self):
+        return static_image_url(self.logo)
+
     def to_dict(self):
         return {
             'brand_id': self.brand_id,
             'name': self.name,
             'slug': self.slug,
-            'logo': self.logo,
+            'logo': self.logo_url(),
             'description': self.description,
             'country': self.country,
             'is_active': self.is_active,
@@ -224,7 +321,7 @@ class Category(db.Model):
             'name': self.name,
             'slug': self.slug,
             'description': self.description,
-            'image': self.image,
+            'image': static_image_url(self.image),
             'sort_order': self.sort_order,
         }
         if include_children:
@@ -1202,6 +1299,28 @@ class BackInStockAlert(db.Model):
 
 
 # ─── 29. Returns ───────────────────────────────────────────────────────────────
+class Notification(db.Model):
+    """In-app notifications shown by the mobile client's notification page."""
+    __tablename__ = 'notifications'
+    notification_id = db.Column(db.Integer, primary_key=True)
+    user_id        = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False)
+    title          = db.Column(db.String(160), nullable=False)
+    message        = db.Column(db.Text, nullable=False)
+    kind           = db.Column(db.String(40), default='general', nullable=False)
+    is_read        = db.Column(db.Boolean, default=False, nullable=False)
+    created_at     = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    def to_dict(self):
+        return {
+            'notification_id': self.notification_id,
+            'title': self.title,
+            'message': self.message,
+            'kind': self.kind,
+            'is_read': self.is_read,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+
 class ReturnRequest(db.Model):
     __tablename__ = 'return_requests'
     return_id     = db.Column(db.Integer, primary_key=True)

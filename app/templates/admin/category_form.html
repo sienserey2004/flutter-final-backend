@@ -1,4 +1,5 @@
 {% extends "admin/base_admin.html" %}
+{% import "admin/_macros.html" as m %}
 {% block title %}{{ 'Edit' if category else 'New' }} Category{% endblock %}
 
 {% block admin_content %}
@@ -11,7 +12,7 @@
   <div class="col-12 col-lg-7 col-xl-6">
     <div class="card">
       <div class="card-body">
-        <form method="post">
+        <form method="post" enctype="multipart/form-data">
           <div class="row g-3">
             <div class="col-12">
               <label class="form-label" for="name">Category name</label>
@@ -37,9 +38,7 @@
                      value="{{ category.sort_order if category else 0 }}">
             </div>
             <div class="col-12">
-              <label class="form-label" for="image">Image URL</label>
-              <input type="text" class="form-control" id="image" name="image"
-                     value="{{ category.image or '' if category else '' }}">
+              {{ m.image_upload('image', category.image if category else none, 'Category image') }}
             </div>
             <div class="col-12">
               <label class="form-label" for="description">Description</label>

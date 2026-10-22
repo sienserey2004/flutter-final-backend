@@ -44,7 +44,7 @@
                    placeholder="{{ 'Unchanged' if user else 'At least 6 characters' }}">
           </div>
 
-          {% if not user %}
+          {% if not user and is_super_admin %}
           <div class="form-check mb-3">
             <input class="form-check-input" type="checkbox" id="is_admin" name="is_admin"
                    {{ 'checked' if is_admin }}>

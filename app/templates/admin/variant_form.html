@@ -1,4 +1,5 @@
 {% extends "admin/base_admin.html" %}
+{% import "admin/_macros.html" as m %}
 {% block title %}{{ 'Edit' if variant else 'New' }} Variant{% endblock %}
 
 {% block admin_content %}
@@ -16,7 +17,7 @@
   <div class="col-12 col-lg-7 col-xl-6">
     <div class="card">
       <div class="card-body">
-        <form method="post">
+        <form method="post" enctype="multipart/form-data">
           <div class="row g-3">
 
             <div class="col-12 col-sm-6">
@@ -81,10 +82,8 @@
             </div>
 
             <div class="col-12">
-              <label class="form-label" for="image">Image URL</label>
-              <input type="text" class="form-control" id="image" name="image"
-                     value="{{ variant.image or '' if variant else '' }}"
-                     placeholder="Leave blank to use the product's gallery image">
+              {{ m.image_upload('image', variant.image if variant else none, 'Variant image',
+                                'Optional — leave empty to use the product\'s gallery image. JPG, PNG, WEBP or GIF, up to 5 MB.') }}
             </div>
 
             {% if variant and variant.stock == 0 %}

@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from app.models import (db, Product, ProductVariant, SkinType, SkinConcern,
                         UserSkinProfile, Address, Wishlist, WishlistItem,
                         Order, OrderItem, ReturnRequest, ReturnItem,
-                        BackInStockAlert, Subscription)
+                        BackInStockAlert, Subscription, Notification)
 from app.api import wants_json, api_ok, api_error, form_value, form_list
 
 account_bp = Blueprint('account', __name__)
@@ -49,6 +49,36 @@ def overview():
         })
     return render_template('account/overview.html', wishlist=wishlist,
                            orders=orders, subscriptions=subs)
+
+
+# ── Notifications ─────────────────────────────────────────────────────────────
+@account_bp.route('/notifications')
+@login_required
+def notifications():
+    items = (current_user.notifications.order_by(Notification.created_at.desc())
+             .limit(100).all())
+    unread = current_user.notifications.filter_by(is_read=False).count()
+    return api_ok({'notifications': [n.to_dict() for n in items],
+                   'unread_count': unread})
+
+
+@account_bp.route('/notifications/<int:notification_id>/read', methods=['POST'])
+@login_required
+def mark_notification_read(notification_id):
+    item = Notification.query.get_or_404(notification_id)
+    if item.user_id != current_user.user_id:
+        abort(403)
+    item.is_read = True
+    db.session.commit()
+    return api_ok(item.to_dict())
+
+
+@account_bp.route('/notifications/read-all', methods=['POST'])
+@login_required
+def mark_all_notifications_read():
+    current_user.notifications.filter_by(is_read=False).update({'is_read': True})
+    db.session.commit()
+    return api_ok(message='All notifications marked as read.')
 
 
 # ── Skin profile ───────────────────────────────────────────────────────────────
