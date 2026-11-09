@@ -183,7 +183,7 @@ def create_app(config_name='default'):
     # Jinja2 globals
     from datetime import datetime
     app.jinja_env.globals['now'] = datetime.utcnow
-    app.jinja_env.globals['STORE_NAME'] = app.config.get('STORE_NAME', 'NovaMart')
+    app.jinja_env.globals['STORE_NAME'] = app.config.get('STORE_NAME', 'Aurea Skin')
     app.jinja_env.globals['STORE_TAGLINE'] = app.config.get('STORE_TAGLINE', '')
 
     @app.context_processor

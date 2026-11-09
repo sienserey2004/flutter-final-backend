@@ -255,7 +255,7 @@ def checkout():
                     merchant_city=merchant.merchant_city,
                     amount=quote['total'],
                     currency='USD',
-                    store_label=current_app.config.get('STORE_NAME', 'Skincare Store'),
+                    store_label=current_app.config.get('STORE_NAME', 'Aurea Skin'),
                     terminal_label=merchant.terminal_label,
                     phone_number='061275099',
                     bill_number=str(order.order_id),

@@ -1095,7 +1095,7 @@ a:hover { text-decoration: underline; text-underline-offset: 3px; }
 .form-control:focus { outline: none; }
 .btn-close:focus { box-shadow: none; }
 
-/* ── NovaMart marketplace storefront ────────────────────────────────────────
+/* ── Aurea Skin storefront ────────────────────────────────────────
    The commerce layer intentionally sits at the end of the existing design
    system so account, checkout and admin templates keep their proven layout
    while the customer-facing storefront gets the new retail identity. */
